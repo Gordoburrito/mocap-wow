@@ -12,6 +12,7 @@ everything still works from the setup page.
 import threading
 
 from .keys import SYNTHETIC_MARK, binding_from_event
+from . import permission_name
 
 CAPTURE_HOTKEY = {"code": "KeyC", "mods": ["alt"]}
 
@@ -31,7 +32,7 @@ class Hotkeys(threading.Thread):
                                       q.kCGEventTapOptionDefault, mask, self._callback, None)
         if not self.tap:
             self.engine.hotkeys = {"ok": False, "message": (
-                "Global hotkeys need Accessibility permission for your terminal app")}
+                f"Global hotkeys need Accessibility permission for {permission_name()}")}
             return
         source = q.CFMachPortCreateRunLoopSource(None, self.tap, 0)
         q.CFRunLoopAddSource(q.CFRunLoopGetCurrent(), source, q.kCFRunLoopCommonModes)

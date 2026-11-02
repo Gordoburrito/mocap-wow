@@ -23,7 +23,7 @@ import numpy as np
 
 from . import profile as profiles
 from .body import HopDetector, JogDetector
-from . import camera_moves
+from . import camera_moves, permission_name
 from .calibration import DeviceCalibration, StillCapture, pose_quality, trigger_from_noise
 from .fusion import CameraTrack, ClockMap, HandFinder, LagFinder
 from .metrics import Drill, Metrics
@@ -116,6 +116,9 @@ class Engine:
         self.pose_matches = {}
         self.motion_block_until = -np.inf       # host time; set by a clash
         self.overlay_height = None
+        self.overlay_hide_requested = False     # the HUD panel's own "hide" button (the app acts on it)
+        self.demo = False                       # running the demo (sample data, simulated hardware)
+        self.on_open_demo = None                # how to open the demo window (set at start-up)
         self.track = CameraTrack()
         self.move_seg = camera_moves.MoveSegmenter()    # whole body: capture
         self.move_scopes = {}                           # scope -> MoveScope (live recognition)
@@ -315,6 +318,8 @@ class Engine:
                 "devices": [self._public_device(d) for d in self.devices.values()],
                 "settings": self.settings,
                 "keys_ok": self.keys.dry_run or self.keys.accessibility_ok(),
+                "permission_app": permission_name(),
+                "demo": self.demo,
                 "dry_run": self.keys.dry_run,
                 "camera": self.camera,
                 "hotkeys": self.hotkeys,
@@ -1195,6 +1200,9 @@ class Engine:
             n, self.near = self.near, None
             if n is None:
                 return
+            if choice == "dismiss":         # "Not now": no answer, nothing changes
+                self.emit(self.snapshot())
+                return
             g = self.gesture(n["gid"])
             if g is not None:
                 self.metrics.correction(choice, g["id"], g["name"])
@@ -1300,6 +1308,18 @@ class Engine:
                 self.profile.get("ignore", {}).pop(op.get("role"), None)
             elif name == "record_neutral":
                 self._start_neutral()
+                return None
+            elif name == "neutral_cancel":
+                if self.neutral_rec is not None:
+                    self.neutral_rec = None
+                    self.emit({"type": "neutral", "phase": "cancelled"})
+                return None
+            elif name == "open_demo":
+                if self.on_open_demo is not None and not self.demo:
+                    self.on_open_demo()
+                return None
+            elif name == "overlay_hide":
+                self.overlay_hide_requested = True
                 return None
             elif name == "capture_start":
                 self.start_capture(op.get("trigger", "ui"), op.get("id"), op.get("kind"))

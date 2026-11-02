@@ -88,6 +88,7 @@ class AppDelegate(NSObject):
         app_menu.addItem_(_item(f"About {APP_NAME}", "orderFrontStandardAboutPanel:"))
         app_menu.addItem_(NSMenuItem.separatorItem())
         app_menu.addItem_(_item("Accuracy test…", "openMetrics:", "", self))
+        app_menu.addItem_(_item("Open the demo (sample data)", "openDemo:", "", self))
         app_menu.addItem_(_item("Open in browser", "openBrowser:", "", self))
         app_menu.addItem_(NSMenuItem.separatorItem())
         app_menu.addItem_(_item(f"Hide {APP_NAME}", "hide:", "h"))
@@ -119,7 +120,7 @@ class AppDelegate(NSObject):
         style = (NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                  | NSWindowStyleMaskResizable)
         win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(rect, style, NSBackingStoreBuffered, False)
-        win.setTitle_(APP_NAME)
+        win.setTitle_(APP_NAME + (" — demo (sample data)" if self.run.args.demo else ""))
         win.setReleasedWhenClosed_(False)
         win.setMinSize_((760, 520))
         win.setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.07, 0.09, 1.0))
@@ -142,6 +143,8 @@ class AppDelegate(NSObject):
         self.overlay_item = _item("HUD over the game", "toggleOverlay:", "", self)
         menu.addItem_(self.overlay_item)
         menu.addItem_(_item("Accuracy test…", "openMetrics:", "", self))
+        if not self.run.args.demo:
+            menu.addItem_(_item("Open the demo (sample data)", "openDemo:", "", self))
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItem_(_item(f"Quit {APP_NAME}", "terminate:", ""))
         item.setMenu_(menu)
@@ -167,6 +170,11 @@ class AppDelegate(NSObject):
         self.web.loadRequest_(NSURLRequest.requestWithURL_(NSURL.URLWithString_(self.run.url + "#/metrics")))
         self.showWindow_(None)
 
+    def openDemo_(self, sender):
+        if not self.run.args.demo:
+            from .__main__ import launch_demo
+            launch_demo()
+
     def openBrowser_(self, sender):
         webbrowser.open(self.run.url)
 
@@ -185,6 +193,10 @@ class AppDelegate(NSObject):
             self.run.controllers.step()
         if self.overlay is not None and self.overlay.panel is not None:
             self.overlay.update_height()
+            if self.run.engine.overlay_hide_requested:
+                self.run.engine.overlay_hide_requested = False
+                self.overlay.set_visible(False)
+                self._update_status(force=True)
         self._update_status()
 
     def _update_status(self, force=False):

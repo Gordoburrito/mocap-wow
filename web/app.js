@@ -52,7 +52,7 @@ const handlers = {
   calibration: onCalibration,
   near: (m) => { if (S) { S.near = m; render(); } },
   drill: onDrill,
-  neutral: (m) => { ui.neutral = m; if (m.phase === "done") setTimeout(() => { ui.neutral = null; render(); }, 2500); render(); },
+  neutral: (m) => { ui.neutral = m.phase === "cancelled" ? null : m; if (m.phase === "done") setTimeout(() => { ui.neutral = null; render(); }, 2500); render(true); },
   added: (m) => { if (m.id && route.page === "library" && m.focus) location.hash = `#/gesture/${m.id}`; },
 };
 
@@ -63,17 +63,25 @@ function editing() {
   return ae && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName) && ae.type !== "range" && ae.type !== "checkbox";
 }
 
+// Only touch the page when what it shows changed: the engine sends updates many times a second,
+// and replacing a button between your press and release swallows the click.
+function setHTML(el, html) {
+  if (!el || el._html === html) return false;
+  el.innerHTML = html;
+  el._html = html;
+  return true;
+}
+
 function render(force = false) {
-  if (!S) { $("#root").innerHTML = `<div class="main"><p class="muted">Connecting to the engine…</p></div>`; return; }
+  if (!S) { setHTML($("#root"), `<div class="main"><p class="muted">Connecting to the engine…</p></div>`); return; }
   document.body.classList.toggle("overlay", route.page === "overlay");
   renderModal();
   if (!force && editing()) { renderChips(); return; }
   const page = route.page;
-  if (page === "overlay" || page === "hud") { $("#root").innerHTML = hudPage(); return; }
+  if (page === "overlay" || page === "hud") { setHTML($("#root"), hudPage()); return; }
   const body = page === "gesture" ? gesturePage(route.id) : page === "engine" ? enginePage()
     : page === "metrics" ? metricsPage() : libraryPage();
-  $("#root").innerHTML = `<div class="app">${sidebar()}<main class="main" id="main">${banners()}${body}</main></div>`;
-  afterRender();
+  if (setHTML($("#root"), `<div class="app">${sidebar()}<main class="main" id="main">${banners()}${body}</main></div>`)) afterRender();
 }
 
 function afterRender() {
@@ -83,8 +91,9 @@ function afterRender() {
 
 function banners() {
   let out = "";
+  if (S.demo) out += `<div class="banner info">Demo: sample data on simulated weapons and webcam, in its own folder. Your real profile and play log aren't touched, and no keys are sent. A demo player makes a move every few seconds.</div>`;
   if (S.disconnected) out += `<div class="banner bad">Disconnected from the engine — is it still running?</div>`;
-  if (!S.keys_ok) out += `<div class="banner warn">Key output is blocked. Open <b>System Settings → Privacy &amp; Security → Accessibility</b>, turn on your terminal app, then restart.</div>`;
+  if (!S.keys_ok) out += `<div class="banner warn">Key output is blocked. Open <b>System Settings → Privacy &amp; Security → Accessibility</b>, turn on ${esc(S.permission_app || "your terminal app")}, then quit and reopen it.</div>`;
   return out;
 }
 
@@ -308,7 +317,7 @@ function libraryPage() {
   const shown = S.gestures.filter((g) => (ui.filter === "all" || category(g) === ui.filter) && (!q || `${g.name} ${g.casts}`.toLowerCase().includes(q)));
   const filterBtn = (id, label, dot) => `<button class="${ui.filter === id ? "on" : ""}" data-act="filter" data-v="${id}" aria-pressed="${ui.filter === id}">${dot ? `<i class="dot ${dot}"></i>` : ""}${label} <span>${cats[id]}</span></button>`;
   const tiles = shown.map(tileHtml).join("");
-  const empty = !S.gestures.length ? `<div class="empty"><b>No gestures yet.</b><span>Tap the weapon shafts together (or press Capture) and do a move five times. Then press the key you bound in WoW. That's it.</span><span class="muted">Record Neutral first on the Engine page so poses know what "doing nothing" looks like.</span><button class="primary" data-act="capture">Capture your first move</button></div>` : "";
+  const empty = !S.gestures.length ? `<div class="empty"><b>No gestures yet.</b><span>Tap the weapon shafts together (or press Capture) and do a move five times. Then press the key you bound in WoW. That's it.</span><span class="muted">Record Neutral first on the Engine page so poses know what "doing nothing" looks like.</span><div class="row wrap"><button class="primary" data-act="capture">Capture your first move</button>${S.demo ? "" : `<button data-act="open-demo">Try it with sample data</button>`}</div></div>` : "";
   return `
   <div class="toolbar"><div class="chips grow" id="chips">${chipsHtml()}</div>
     <button class="primary capture-btn" data-act="capture">${ICONS.capture}Capture a move<small>or tap the shafts · ⌥C</small></button></div>
@@ -487,7 +496,7 @@ function enginePage() {
     <article class="panel"><h2><span><i class="dot pose"></i> Webcam</span><span class="muted" style="font-size:12px;font-weight:400">${S.camera.ok ? `${S.camera.fps} fps` : "off"}</span></h2>
       <div class="stage"><div class="mirror"><img id="preview" alt=""><canvas id="skeleton"></canvas></div><span class="msg" id="camera-msg">${esc(S.camera.ok ? "" : S.camera.message)}</span></div>
       <div class="checks" id="checks">${checksHtml()}</div>
-      <div class="row between"><span class="soft">Neutral · <span id="neutral-status">${esc(neutralStatus)}</span></span><span class="toolbar"><button class="small" data-act="neutral">● Record 6 s</button>${S.neutral_count ? `<button class="small ghost" data-act="clear-neutral">Clear</button>` : ""}</span></div></article>
+      <div class="row between"><span class="soft">Neutral · <span id="neutral-status">${esc(neutralStatus)}</span></span><span class="toolbar">${neutral && neutral.phase !== "done" ? `<button class="small" data-act="neutral-cancel">Cancel</button>` : `<button class="small" data-act="neutral">● Record 6 s</button>`}${S.neutral_count && !(neutral && neutral.phase !== "done") ? `<button class="small ghost" data-act="clear-neutral">Clear</button>` : ""}</span></div></article>
     ${devCards}</div></section>
   <div class="cols">
     <div class="wide">
@@ -519,7 +528,7 @@ function enginePage() {
         <div class="row wrap"><input type="text" id="new-profile" placeholder="New profile name (e.g. Marksmanship)" style="flex:1;min-width:160px">
           <button class="small" data-act="profile-new">New</button><button class="small ghost" data-act="profile-copy">Copy current</button></div></section>
       <section class="panel"><h2>Outputs &amp; safety</h2>
-        <div class="note ${S.keys_ok ? "ok" : "warn"}">${S.dry_run ? "Dry run: nothing is sent." : S.keys_ok ? "Key output allowed (Accessibility)." : "Key output blocked: allow your terminal app in Accessibility."}</div>
+        <div class="note ${S.keys_ok ? "ok" : "warn"}">${S.dry_run ? "Dry run: nothing is sent." : S.keys_ok ? "Key output allowed (Accessibility)." : `Key output blocked: allow ${esc(S.permission_app || "your terminal app")} in Accessibility.`}</div>
         <div class="note ${S.hotkeys.ok ? "ok" : "info"}">${esc(S.hotkeys.message)}</div>
         <label class="switch-row"><span><b>Only while WoW is in front</b><small>Keys are held back when another app is in front.</small></span><input type="checkbox" role="switch" data-change="setting-bool" data-k="require_wow_front" ${s.require_wow_front ? "checked" : ""}></label>
         <label class="field">WoW app name<input type="text" data-change="setting" data-k="wow_app" value="${esc(s.wow_app)}"></label>
@@ -571,15 +580,16 @@ function hudPage() {
   return `<div class="hud-wrap"><aside class="hud ${ui.compact ? "compact" : ""}" aria-label="Live HUD">
     <div class="row">${ICONS.logo}<span style="flex:1;display:flex;flex-direction:column;line-height:1.15"><b>${esc(S.profile.name)}</b><small class="muted">${S.gestures.length} gestures</small></span>
       <button class="arm-pill ${S.armed ? "on" : ""}" data-act="arm">${S.armed ? "ARMED" : "DISARMED"}</button>
-      ${overlay ? `<button class="small ghost" data-act="compact" aria-label="${ui.compact ? "Expand" : "Collapse"}">${ui.compact ? "▾" : "▴"}</button>` : ""}</div>
+      ${overlay ? `<button class="small ghost" data-act="compact" aria-label="${ui.compact ? "Expand" : "Collapse"}">${ui.compact ? "▾" : "▴"}</button><button class="small ghost" data-act="overlay-hide" aria-label="Hide the HUD (show it again from the ⚔ menu)" title="Hide (⚔ menu → HUD over the game brings it back)">✕</button>` : ""}</div>
+    ${overlay ? "" : `<a href="#/library" class="small" style="align-self:flex-start">← Back to the app</a>`}
     <div class="hud-body stack" style="gap:14px">
     ${S.drill ? drillHtml(S.drill, true) : c ? captureHtml(c, true) : `
-      ${toast ? `<div class="toast" role="status"><b style="font-size:13px">✓ Saved: ${esc(toast.name)} → ${esc(toast.key_label)} is live</b><div class="row"><button class="small" data-act="undo">Undo</button>${overlay ? "" : `<a class="small" href="#/gesture/${toast.id}">Tune it</a>`}</div></div>` : ""}
+      ${toast ? `<div class="toast" role="status"><b style="font-size:13px">✓ Saved: ${esc(toast.name)} → ${esc(toast.key_label)} is live</b><div class="row"><button class="small" data-act="undo">Undo</button>${overlay ? "" : `<a class="small" href="#/gesture/${toast.id}">Tune it</a>`}<button class="small ghost" data-act="toast-close" aria-label="Close">✕</button></div></div>` : ""}
       <div class="panel" style="padding:12px 14px;gap:10px">${meter("Webcam", "pose", "meter-webcam")}${devMeters}</div>
       <div class="stack" style="gap:6px"><span class="eyebrow">Just fired</span>
         <ol class="fired">${fired.map((a, i) => `<li class="${i === 0 && a.sent ? "top" : ""} ${a.sent ? "" : "dim"}"><span class="key" style="${a.sent ? "" : "border-style:dashed;color:var(--muted)"}">${esc(a.key && a.key !== "—" ? a.key : "·")}</span><span class="n"><b style="font-size:13px">${esc(a.gesture)}</b><small>${esc(a.casts ? a.casts + " · " : "")}${esc(a.sent ? a.detail : a.detail)}</small></span><small>${fmtTime(a.t)}</small></li>`).join("") || `<li class="dim"><small>Nothing yet. Arm it and make a move.</small></li>`}</ol></div>
       ${S.last_fire && Date.now() / 1000 - S.last_fire.t < 15 ? `<div class="row between" style="font-size:12px"><span class="muted">Last: <b class="soft">${esc(S.last_fire.name)}</b></span><button class="small ghost" data-act="wrong" title="That fired but you didn't mean it: count it as wrong and ignore that move from now on">✗ Wasn't me</button></div>` : ""}
-      ${near ? `<div class="note warn stack"><span><b>${esc(near.name)}</b> almost fired (${near.match}). Was that meant to be it?</span><div class="row"><button class="small" data-act="near" data-v="loosen">Yes, loosen it</button><button class="small ghost" data-act="near" data-v="ignore">No, ignore that move</button></div></div>` : ""}
+      ${near ? `<div class="note warn stack"><span><b>${esc(near.name)}</b> almost fired (${near.match}). Was that meant to be it?</span><div class="row"><button class="small" data-act="near" data-v="loosen">Yes, loosen it</button><button class="small ghost" data-act="near" data-v="ignore">No, ignore that move</button><button class="small ghost" data-act="near" data-v="dismiss">Not now</button></div></div>` : ""}
       <div class="stack muted" style="font-size:12px;gap:4px;border-top:1px solid #1e2330;padding-top:10px"><span><b class="soft">Tap the shafts together</b> or ⌥C to capture a new move</span><span>${esc(armHint())}</span></div>`}
     </div></aside></div>`;
 }
@@ -588,11 +598,11 @@ function hudPage() {
 
 function renderModal() {
   const el = $("#modal");
-  if (route.page === "overlay" || route.page === "hud") { el.innerHTML = ""; return; }
-  if (S.capture) { el.innerHTML = `<div class="modal-back"><section class="modal" aria-label="Quick capture">${captureHtml(S.capture, false)}</section></div>`; return; }
-  if (S.drill) { el.innerHTML = `<div class="modal-back"><section class="modal" aria-label="Accuracy test">${drillHtml(S.drill, false)}</section></div>`; return; }
-  if (S.calibration || ui.calibDone) { el.innerHTML = `<div class="modal-back"><section class="modal" aria-label="Calibrate">${calibHtml()}</section></div>`; return; }
-  el.innerHTML = "";
+  if (route.page === "overlay" || route.page === "hud") { setHTML(el, ""); return; }
+  if (S.capture) { setHTML(el, `<div class="modal-back"><section class="modal" aria-label="Quick capture">${captureHtml(S.capture, false)}</section></div>`); return; }
+  if (S.drill) { setHTML(el, `<div class="modal-back"><section class="modal" aria-label="Accuracy test">${drillHtml(S.drill, false)}</section></div>`); return; }
+  if (S.calibration || ui.calibDone) { setHTML(el, `<div class="modal-back"><section class="modal" aria-label="Calibrate">${calibHtml()}</section></div>`); return; }
+  setHTML(el, "");
 }
 
 function captureHtml(c, inHud) {
@@ -796,6 +806,10 @@ const actions = {
   near: (el) => send({ op: "near", choice: el.dataset.v }),
   compact: () => { ui.compact = !ui.compact; send({ op: "overlay_size", height: ui.compact ? 76 : null }); render(true); },
   wrong: () => send({ op: "report_wrong", ignore: true }),
+  "neutral-cancel": () => send({ op: "neutral_cancel" }),
+  "open-demo": () => { send({ op: "open_demo" }); flash("Opening the demo in a new window…"); },
+  "overlay-hide": () => send({ op: "overlay_hide" }),
+  "toast-close": () => { ui.toastUntil = 0; render(true); },
   "drill-start": () => { unlockAudio(); ui.drillResult = null; send({ op: "drill_start", reps: +($("#drill-reps")?.value || 3) }); },
   "drill-stop": () => send({ op: "drill_stop" }),
   "drill-close": () => { ui.drillResult = null; render(true); },
@@ -804,9 +818,27 @@ const actions = {
   "profile-copy": () => { const n = $("#new-profile").value.trim() || `${S.profile.name} copy`; send({ op: "profile_new", name: n, copy: true }); },
 };
 
+// Buttons act when you press and release on them, even if the button was redrawn in between
+// (a plain "click" is lost when that happens). Keyboard presses arrive as clicks.
+// In-app links (#/...) get the same treatment.
+const actKey = (el) => el.matches("[data-act]") ? JSON.stringify(el.dataset) : `link:${el.getAttribute("href")}`;
+const pressable = (t) => t.closest("[data-act], a[href^='#/']");
+let pressed = null;
+document.addEventListener("pointerdown", (e) => {
+  const el = e.button === 0 && pressable(e.target);
+  pressed = el ? actKey(el) : null;
+});
+document.addEventListener("pointerup", (e) => {
+  const el = pressable(e.target);
+  const was = pressed;
+  pressed = null;
+  if (!el || !was || actKey(el) !== was || e.button !== 0) return;
+  if (el.matches("[data-act]")) actions[el.dataset.act]?.(el, e);
+  else { ui.navigatedAt = Date.now(); location.hash = el.getAttribute("href"); }
+});
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
-  if (el) { e.preventDefault(); actions[el.dataset.act]?.(el, e); return; }
+  if (el) { e.preventDefault(); if (e.detail === 0) actions[el.dataset.act]?.(el, e); return; }
   if (ui.listening && !e.target.closest("[data-act=rebind]")) { ui.listening = null; render(true); }
 });
 
@@ -835,6 +867,21 @@ document.addEventListener("input", (e) => {
   const el = e.target;
   if (el.dataset?.live === "search") { ui.search = el.value; const grid = $("#tiles"); if (grid) { const q = ui.search.toLowerCase(); $$(".tile", grid).forEach((t) => { const g = S.gestures.find((x) => x.id === t.dataset.gid); t.classList.toggle("hidden", !!q && !`${g.name} ${g.casts}`.toLowerCase().includes(q)); }); } }
   if (el.type === "range") { const out = el.parentElement.querySelector("output"); if (out) out.textContent = `${el.value}${el.dataset.unit ? " " + el.dataset.unit : ""}`; }
+});
+
+// Escape gets you out of whatever is open: capture, calibration, the accuracy test, a Neutral
+// recording, the "Calibrated" summary. (While choosing a key, Escape stops listening instead.)
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !S || ui.listening || editing()) return;
+  if (S.capture && S.capture.phase === "bind") return;   // handled by the key-capture listener below
+  if (S.capture) send({ op: "capture_cancel" });
+  else if (S.calibration) send({ op: "calibrate_cancel" });
+  else if (S.drill) send({ op: "drill_stop" });
+  else if (ui.calibDone) { ui.calibDone = null; render(true); }
+  else if (ui.neutral && ui.neutral.phase !== "done") send({ op: "neutral_cancel" });
+  else if (route.page === "hud") location.hash = "#/library";
+  else return;
+  e.preventDefault();
 });
 
 const MODIFIERS = new Set(["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "CapsLock", "Fn"]);

@@ -11,6 +11,7 @@ import time
 import webbrowser
 from pathlib import Path
 
+from . import permission_name
 from .camera import Camera
 from .engine import Engine
 from .keys import KeyOutput
@@ -58,6 +59,9 @@ def parser():
                    help="simulated Joy-Cons (and a simulated camera that sees them with --sim-camera)")
     p.add_argument("--sim-camera", action="store_true", help="simulated webcam that sees the simulated weapons")
     p.add_argument("--sim-poses", default=None, help="JSON pose library for the simulated camera")
+    p.add_argument("--demo", action="store_true",
+                   help="the app with sample data on simulated hardware, in its own folder (never your real data)")
+    p.add_argument("--demo-reset", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--snapshot", default=None, help=argparse.SUPPRESS)   # app: save the window as PNG, for tests
     p.add_argument("--selftest", action="store_true",
                    help="check the pose model, OpenCV, SDL (Joy-Cons) and permissions, then exit")
@@ -106,6 +110,17 @@ class Running:
 
     def __init__(self, args):
         self.args = args
+        self.demo_profile = None
+        if args.demo:
+            # Sample data on simulated hardware, in its own folder; keys are never sent and
+            # the real app's hotkeys and port are left alone.
+            from . import demo
+            args.sim = args.sim_camera = args.dry_run = args.no_hotkeys = True
+            args.data_dir = args.data_dir or str(demo.demo_dir())
+            if args.port == 8765:
+                args.port = 8766
+            self.demo_profile = demo.prepare(args.data_dir, reset=args.demo_reset)
+            args.profile = args.profile or self.demo_profile
         if args.data_dir:
             data = Path(args.data_dir)
         elif args.sim and not args.profile and not args.profiles_dir:
@@ -119,6 +134,8 @@ class Running:
         self.keys = KeyOutput(dry_run=args.dry_run)
         self.engine = Engine(self.profile_path, self.keys, profiles_dir=str(profiles_dir),
                              metrics_dir=str(data / "metrics"))
+        self.engine.demo = bool(args.demo)
+        self.engine.on_open_demo = launch_demo
         self.stop = threading.Event()
         self.url = f"http://127.0.0.1:{args.port}/"
         self.controllers = None
@@ -153,6 +170,9 @@ class Running:
             Camera(engine, args.camera, str(model), self.stop).start()
         if self.sim is not None:
             self.sim.start()
+        if args.demo and self.sim is not None and self.sim_camera is not None:
+            from .demo import DemoPlayer
+            DemoPlayer(self.engine, self.sim, self.sim_camera, self.stop).start()
         if not args.no_hotkeys and not args.dry_run:
             from .hotkeys import Hotkeys
             Hotkeys(engine).start()
@@ -172,6 +192,16 @@ class Running:
         self.keys.release_all()
         self.keys.flush()
         self.engine.save()
+
+
+def launch_demo():
+    """Open the demo (sample data, simulated hardware) as a second, separate window."""
+    import subprocess
+    if getattr(sys, "frozen", False) or getattr(sys, "_MEIPASS", None):
+        bundle = Path(sys.executable).resolve().parents[2]        # .../Mocap.app/Contents/MacOS/Mocap
+        subprocess.Popen(["open", "-n", str(bundle), "--args", "--demo"])
+    else:
+        subprocess.Popen([sys.executable, "-m", "mocap.app", "--demo"], cwd=str(ROOT))
 
 
 def _download_model(path, engine):
@@ -204,7 +234,7 @@ def main():
     if args.dry_run:
         print("  Dry run: keys are recognized but never sent.")
     elif not run.keys.accessibility_ok():
-        print("  ! Key output needs Accessibility permission for your terminal app:")
+        print(f"  ! Key output needs Accessibility permission for {permission_name()}:")
         print("    System Settings → Privacy & Security → Accessibility, then restart.")
     if args.sim:
         print("  Simulated weapons: POST /api/sim {\"role\": \"melee\", \"gesture\": \"slash_left\"}")

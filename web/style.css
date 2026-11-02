@@ -241,3 +241,5 @@ table.grid td.miss { background: rgba(245,181,68,.12); color: #f7d08a; }
 .drill-name { font-family: "Chakra Petch", Inter, sans-serif; font-size: 38px; line-height: 1.1; }
 .hud .drill-name { font-size: 26px; }
 @media (max-width: 720px) { .barrow > span:first-child { width: 84px; } .drill-name { font-size: 28px; } }
+
+.banner.info { background: rgba(122,162,255,.08); border: 1px solid rgba(122,162,255,.4); color: #c9d6ff; }

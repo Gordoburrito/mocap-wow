@@ -7,7 +7,7 @@
    "jog_starts": 1,
    "jogging_seconds": 1.1,
    "first_jog_at": 2.2,
-   "hops": 2,
+   "hops": 0,
    "reference_jumps": 2
   },
   {
@@ -57,7 +57,7 @@
    "jog_starts": 1,
    "jogging_seconds": 1.1,
    "first_jog_at": 2.13,
-   "hops": 1,
+   "hops": 0,
    "reference_jumps": 3
   }
  ],
@@ -193,7 +193,7 @@
    "jog_starts": 3,
    "jogging_seconds": 2.1,
    "first_jog_at": 20.22,
-   "hops": 40,
+   "hops": 17,
    "reference_jumps": 18
   },
   {

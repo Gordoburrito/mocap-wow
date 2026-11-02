@@ -77,13 +77,14 @@ class JogDetector:
 
 
 class HopDetector:
-    def __init__(self, rise=0.2, max_air=0.7, settle=2.0):
+    def __init__(self, rise=0.15, max_air=0.7, settle=2.0):
         self.rise = rise
         self.max_air = max_air
         self.history = deque()          # (t, hip height in shoulder widths)
         self.settle = settle
         self.up_since = None
         self.cooldown_until = -np.inf
+        self.scales = deque(maxlen=90)
 
     def update(self, lm, aspect, t):
         """Returns "hop" when a hop lands, else None."""
@@ -92,6 +93,10 @@ class HopDetector:
         scale = _scale(lm, aspect)
         if not scale:
             return None
+        # A steady shoulder width (median of the last ~3 s): the hips sit ~5 shoulder widths down
+        # the frame, so a 2% wobble in one frame's shoulder width would read as a 0.1 "jump".
+        self.scales.append(scale)
+        scale = float(np.median(self.scales))
         height = -((lm[L_HIP, 1] + lm[R_HIP, 1]) / 2) / scale     # bigger = higher
         while self.history and t - self.history[0][0] > self.settle:
             self.history.popleft()

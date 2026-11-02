@@ -11,3 +11,9 @@ except Exception:          # no SDL installed: everything except the Joy-Cons st
     pass
 
 __version__ = "0.3.0"
+
+
+def permission_name():
+    """Who macOS asks permissions for: the app itself, or the terminal running it from source."""
+    import sys
+    return "Mocap" if getattr(sys, "frozen", False) or getattr(sys, "_MEIPASS", None) else "your terminal app"

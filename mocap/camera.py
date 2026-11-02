@@ -35,12 +35,19 @@ class Camera(threading.Thread):
         if not os.path.exists(self.model_path):
             self.engine.set_camera(ok=False, message="Pose model missing — run ./run.sh to download it")
             return
-        cap = cv2.VideoCapture(self.index, cv2.CAP_AVFOUNDATION)
-        if not cap.isOpened():
+        from . import permission_name
+        # The first time, macOS asks for camera access and OpenCV gives up at once rather than
+        # wait for the answer, so keep trying: the camera starts as soon as you click Allow.
+        while True:
+            cap = cv2.VideoCapture(self.index, cv2.CAP_AVFOUNDATION)
+            if cap.isOpened():
+                break
+            cap.release()
             self.engine.set_camera(ok=False, message=(
-                "Can't open the camera. Allow your terminal app in System Settings → "
-                "Privacy & Security → Camera, then restart."))
-            return
+                f"Waiting for the camera: click Allow on the macOS prompt, or turn on {permission_name()} in "
+                "System Settings → Privacy & Security → Camera."))
+            if self.stop.wait(2.0):
+                return
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         cap.set(cv2.CAP_PROP_FPS, 60)

@@ -99,8 +99,14 @@ standing), run through the same MediaPipe model and pose classifier.
   1.5–2 s of jogging, and detection starts after 3 steps. Real jogging in place is mostly heel kicks, so the
   detector follows the ankles, not the knees (the knee-only version found 0 of 6).
 - **Sit-to-stand and squats** (12 clips): 0 false jogs, 0 false hops.
-- **Jumping jacks + burpees** (45 s, CC BY-SA): 40 hops counted. No exact ground truth, so this
-  only shows hop fires on real jumps. Hop stays beta and off by default.
+- **Jumping jacks + burpees** (45 s, CC BY-SA): 17 hops counted where an independent count of
+  both ankles leaving the floor found 18. An earlier version counted 40: it divided the hips'
+  height by that frame's shoulder width, and MediaPipe's ~2% wobble in shoulder width, times the
+  ~5 shoulder widths the hips sit down the frame, read as jumps. It now uses a steady median
+  shoulder width, and the rise needed is 0.15 shoulder widths (0.2 caught only 13 of 18).
+- False hops: none in the 12 sit-to-stand and squat clips, none in 100 simulated kicks, ducks,
+  stomps and shoves (the old version fired on some), 3 during jogging in place (hops don't fire
+  while you're jogging). Hop stays beta and off by default.
 
 ## 5. Camera + gyro on real people (UTD-MHAD)
 
