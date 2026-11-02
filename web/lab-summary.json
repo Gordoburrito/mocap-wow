@@ -1,0 +1,761 @@
+{
+ "generated": "2026-11-01",
+ "real_gyro": {
+  "source": "6DMG: 28 people, handheld gyro + accelerometer (CC BY 4.0)",
+  "sets": [
+   {
+    "label": "4 cardinal swipes",
+    "correct": 98.3,
+    "wrong": 0.0,
+    "rejected": 1.7,
+    "tests": 1124
+   },
+   {
+    "label": "stick set: 4 swipes + 2 twists",
+    "correct": 98.4,
+    "wrong": 0.0,
+    "rejected": 1.6,
+    "tests": 1688
+   },
+   {
+    "label": "4 pokes (thrust and back)",
+    "correct": 99.6,
+    "wrong": 0.0,
+    "rejected": 0.4,
+    "tests": 1130
+   },
+   {
+    "label": "4 circles",
+    "correct": 95.4,
+    "wrong": 0.0,
+    "rejected": 4.6,
+    "tests": 1124
+   },
+   {
+    "label": "8 swipes (with diagonals)",
+    "correct": 89.0,
+    "wrong": 0.4,
+    "rejected": 10.6,
+    "tests": 2252
+   },
+   {
+    "label": "all 20",
+    "correct": 92.5,
+    "wrong": 0.2,
+    "rejected": 7.3,
+    "tests": 5630
+   }
+  ],
+  "takes": [
+   {
+    "takes": 1,
+    "correct": 90.5
+   },
+   {
+    "takes": 3,
+    "correct": 97.5
+   },
+   {
+    "takes": 5,
+    "correct": 98.4
+   }
+  ],
+  "open_set_false_accept": 10.4
+ },
+ "real_fusion": {
+  "source": "UTD-MHAD: 8 people x 21 arm actions x 4 trials, wrist gyro + RGB video (MediaPipe)",
+  "rows": [
+   {
+    "label": "All 21 arm actions",
+    "gyro": {
+     "correct": 87.8,
+     "wrong": 0.9,
+     "rejected": 11.3
+    },
+    "camera": {
+     "correct": 84.8,
+     "wrong": 1.6,
+     "rejected": 13.6
+    },
+    "fused": {
+     "correct": 90.3,
+     "wrong": 0.3,
+     "rejected": 9.4
+    }
+   },
+   {
+    "label": "10 swing-like actions",
+    "gyro": {
+     "correct": 86.2,
+     "wrong": 1.6,
+     "rejected": 12.2
+    },
+    "camera": {
+     "correct": 88.1,
+     "wrong": 1.9,
+     "rejected": 10.0
+    },
+    "fused": {
+     "correct": 90.0,
+     "wrong": 0.0,
+     "rejected": 10.0
+    }
+   }
+  ],
+  "curve": {
+   "4": {
+    "gyro": {
+     "correct": 93.3,
+     "wrong": 0.3
+    },
+    "camera": {
+     "correct": 91.3,
+     "wrong": 0.9
+    },
+    "fused": {
+     "correct": 94.3,
+     "wrong": 0.1
+    }
+   },
+   "6": {
+    "gyro": {
+     "correct": 93.9,
+     "wrong": 0.2
+    },
+    "camera": {
+     "correct": 90.9,
+     "wrong": 0.8
+    },
+    "fused": {
+     "correct": 94.6,
+     "wrong": 0.1
+    }
+   },
+   "8": {
+    "gyro": {
+     "correct": 90.6,
+     "wrong": 0.4
+    },
+    "camera": {
+     "correct": 88.1,
+     "wrong": 1.2
+    },
+    "fused": {
+     "correct": 92.4,
+     "wrong": 0.1
+    }
+   },
+   "10": {
+    "gyro": {
+     "correct": 90.2,
+     "wrong": 0.3
+    },
+    "camera": {
+     "correct": 89.0,
+     "wrong": 0.9
+    },
+    "fused": {
+     "correct": 93.0,
+     "wrong": 0.2
+    }
+   },
+   "12": {
+    "gyro": {
+     "correct": 90.6,
+     "wrong": 0.5
+    },
+    "camera": {
+     "correct": 88.7,
+     "wrong": 1.2
+    },
+    "fused": {
+     "correct": 91.9,
+     "wrong": 0.1
+    }
+   },
+   "15": {
+    "gyro": {
+     "correct": 89.9,
+     "wrong": 0.8
+    },
+    "camera": {
+     "correct": 88.1,
+     "wrong": 1.5
+    },
+    "fused": {
+     "correct": 91.7,
+     "wrong": 0.1
+    }
+   },
+   "18": {
+    "gyro": {
+     "correct": 88.2,
+     "wrong": 0.7
+    },
+    "camera": {
+     "correct": 85.6,
+     "wrong": 1.8
+    },
+    "fused": {
+     "correct": 90.5,
+     "wrong": 0.2
+    }
+   },
+   "21": {
+    "gyro": {
+     "correct": 87.8,
+     "wrong": 0.9
+    },
+    "camera": {
+     "correct": 84.8,
+     "wrong": 1.6
+    },
+    "fused": {
+     "correct": 90.3,
+     "wrong": 0.3
+    }
+   }
+  },
+  "largest": {
+   "gyro": 10,
+   "fused": 15
+  },
+  "largest_sets": {
+   "gyro": [
+    "swipe left",
+    "swipe right",
+    "arm cross",
+    "basketball shoot",
+    "draw X",
+    "draw circle (cw)",
+    "draw circle (ccw)",
+    "baseball swing",
+    "push",
+    "knock"
+   ],
+   "fused": [
+    "swipe left",
+    "swipe right",
+    "wave",
+    "clap",
+    "arm cross",
+    "basketball shoot",
+    "draw X",
+    "draw circle (cw)",
+    "draw circle (ccw)",
+    "draw triangle",
+    "baseball swing",
+    "tennis swing",
+    "arm curl",
+    "push",
+    "knock"
+   ]
+  },
+  "hand": {
+   "single_move_correct_pct": 86.6,
+   "three_moves_correct_pct": 97.2,
+   "moves": 447,
+   "groups_of_3": 144
+  },
+  "lag": {
+   "dataset_offset_s": 0.26,
+   "shift_0.06": {
+    "median_found": 0.06,
+    "within_20ms_pct": 100.0,
+    "people": 8
+   },
+   "shift_0.12": {
+    "median_found": 0.12,
+    "within_20ms_pct": 87.5,
+    "people": 8
+   }
+  },
+  "still": {
+   "imu_still_windows": 116,
+   "camera_agrees_still_pct": 52.6,
+   "imu_moving_windows": 18440,
+   "camera_wrongly_still_pct": 8.59,
+   "still_wrist_wander_sw": {
+    "median": 0.065,
+    "p90": 0.245
+   }
+  },
+  "bias": {
+   "true_offset_deg_s": 32.0,
+   "gyro_only_error_deg_s": 32.0,
+   "camera_error_deg_s": 17.7,
+   "camera_updates_per_person": 2,
+   "gyro_only_still_limit_deg_s": 14.3
+  },
+  "camera_lag_s": 0.26,
+  "wrist_label": "left"
+ },
+ "sim_fusion": {
+  "sets": [
+   {
+    "label": "melee: 5 distinct (the starter set)",
+    "gyro": {
+     "moves": 180,
+     "correct": 180,
+     "missed": 0,
+     "extra": 0,
+     "waited": 0,
+     "decisions": 201,
+     "correct_pct": 100.0,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 179,
+     "missed": 1,
+     "extra": 0,
+     "waited": 23,
+     "decisions": 201,
+     "correct_pct": 99.4,
+     "waited_for_camera_pct": 11.4
+    }
+   },
+   {
+    "label": "melee: 9: + high/low slash and thrust",
+    "gyro": {
+     "moves": 180,
+     "correct": 88,
+     "missed": 92,
+     "extra": 47,
+     "waited": 0,
+     "decisions": 203,
+     "correct_pct": 48.9,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 179,
+     "missed": 1,
+     "extra": 1,
+     "waited": 140,
+     "decisions": 203,
+     "correct_pct": 99.4,
+     "waited_for_camera_pct": 69.0
+    }
+   },
+   {
+    "label": "melee: 12: + cross chop, lob, jab",
+    "gyro": {
+     "moves": 180,
+     "correct": 75,
+     "missed": 105,
+     "extra": 48,
+     "waited": 0,
+     "decisions": 203,
+     "correct_pct": 41.7,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 144,
+     "missed": 36,
+     "extra": 12,
+     "waited": 175,
+     "decisions": 202,
+     "correct_pct": 80.0,
+     "waited_for_camera_pct": 86.6
+    }
+   },
+   {
+    "label": "bow: 5 distinct (the starter set)",
+    "gyro": {
+     "moves": 180,
+     "correct": 177,
+     "missed": 3,
+     "extra": 0,
+     "waited": 0,
+     "decisions": 204,
+     "correct_pct": 98.3,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 180,
+     "missed": 0,
+     "extra": 0,
+     "waited": 30,
+     "decisions": 203,
+     "correct_pct": 100.0,
+     "waited_for_camera_pct": 14.8
+    }
+   },
+   {
+    "label": "bow: 8: + high/low punch, wide yank",
+    "gyro": {
+     "moves": 180,
+     "correct": 97,
+     "missed": 83,
+     "extra": 31,
+     "waited": 0,
+     "decisions": 197,
+     "correct_pct": 53.9,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 177,
+     "missed": 3,
+     "extra": 0,
+     "waited": 127,
+     "decisions": 197,
+     "correct_pct": 98.3,
+     "waited_for_camera_pct": 64.5
+    }
+   }
+  ],
+  "camera": [
+   {
+    "label": "normal webcam (30 fps)",
+    "moves": 180,
+    "correct": 179,
+    "missed": 1,
+    "extra": 1,
+    "waited": 140,
+    "decisions": 203,
+    "correct_pct": 99.4,
+    "waited_for_camera_pct": 69.0
+   },
+   {
+    "label": "15 fps webcam",
+    "moves": 180,
+    "correct": 179,
+    "missed": 1,
+    "extra": 0,
+    "waited": 138,
+    "decisions": 202,
+    "correct_pct": 99.4,
+    "waited_for_camera_pct": 68.3
+   },
+   {
+    "label": "twice the blur and lost frames",
+    "moves": 180,
+    "correct": 179,
+    "missed": 1,
+    "extra": 1,
+    "waited": 140,
+    "decisions": 203,
+    "correct_pct": 99.4,
+    "waited_for_camera_pct": 69.0
+   },
+   {
+    "label": "camera delay misjudged by 80 ms",
+    "moves": 180,
+    "correct": 179,
+    "missed": 1,
+    "extra": 1,
+    "waited": 140,
+    "decisions": 203,
+    "correct_pct": 99.4,
+    "waited_for_camera_pct": 69.0
+   },
+   {
+    "label": "turned 30 degrees from the camera",
+    "moves": 180,
+    "correct": 145,
+    "missed": 35,
+    "extra": 3,
+    "waited": 142,
+    "decisions": 207,
+    "correct_pct": 80.6,
+    "waited_for_camera_pct": 68.6
+   },
+   {
+    "label": "camera blocked (falls back to gyro)",
+    "moves": 180,
+    "correct": 61,
+    "missed": 119,
+    "extra": 0,
+    "waited": 146,
+    "decisions": 205,
+    "correct_pct": 33.9,
+    "waited_for_camera_pct": 71.2
+   },
+   {
+    "label": "sloppier player (1.6x variation)",
+    "moves": 180,
+    "correct": 166,
+    "missed": 14,
+    "extra": 0,
+    "waited": 147,
+    "decisions": 208,
+    "correct_pct": 92.2,
+    "waited_for_camera_pct": 70.7
+   }
+  ],
+  "auto_align": {
+   "no correction": {
+    "first_40_correct_pct": 65.8,
+    "last_40_correct_pct": 62.5,
+    "mount_error_left_deg": 35.0
+   },
+   "auto-align, gyro decides": {
+    "first_40_correct_pct": 69.2,
+    "last_40_correct_pct": 81.7,
+    "mount_error_left_deg": 15.9
+   },
+   "auto-align, camera + gyro decide": {
+    "first_40_correct_pct": 98.3,
+    "last_40_correct_pct": 98.3,
+    "mount_error_left_deg": 2.7
+   },
+   "no slip, auto-align on (should stay put)": {
+    "first_40_correct_pct": 100.0,
+    "last_40_correct_pct": 98.3,
+    "mount_error_left_deg": 2.8
+   }
+  },
+  "bias": {
+   "gyro-only still tracker": {
+    "offset_error_at_end_deg_s": 34.1,
+    "correct_pct": 87.5,
+    "true_offset_deg_s": 19.9
+   },
+   "+ camera stillness": {
+    "offset_error_at_end_deg_s": 2.8,
+    "correct_pct": 100.0,
+    "true_offset_deg_s": 19.9
+   }
+  }
+ },
+ "sim_fights": {
+  "sets": {
+   "melee": [
+    {
+     "moves": [
+      "slash_left",
+      "slash_right",
+      "overhead_chop",
+      "thrust",
+      "circle"
+     ],
+     "correct": 180,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "slash_left",
+      "slash_right",
+      "overhead_chop",
+      "rising_slash",
+      "thrust"
+     ],
+     "correct": 178,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "slash_left",
+      "slash_right",
+      "overhead_chop",
+      "spin",
+      "thrust"
+     ],
+     "correct": 177,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "slash_left",
+      "slash_right",
+      "overhead_chop",
+      "circle",
+      "wrist_twist"
+     ],
+     "correct": 177,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "slash_left",
+      "overhead_chop",
+      "thrust",
+      "circle",
+      "wrist_twist"
+     ],
+     "correct": 176,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "slash_left",
+      "slash_right",
+      "overhead_chop",
+      "thrust",
+      "wrist_twist"
+     ],
+     "correct": 170,
+     "extra": 8,
+     "total": 180
+    },
+    {
+     "moves": [
+      "slash_left",
+      "diagonal_slash",
+      "overhead_chop",
+      "thrust",
+      "circle"
+     ],
+     "correct": 138,
+     "extra": 38,
+     "total": 180
+    }
+   ],
+   "bow": [
+    {
+     "moves": [
+      "point_forward",
+      "punch",
+      "cant_left",
+      "twist"
+     ],
+     "correct": 177,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "point_forward",
+      "punch",
+      "yank_back",
+      "cant_left",
+      "twist"
+     ],
+     "correct": 176,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "point_forward",
+      "punch",
+      "yank_back",
+      "cant_left",
+      "cant_right"
+     ],
+     "correct": 176,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "point_forward",
+      "punch",
+      "yank_back",
+      "cant_left"
+     ],
+     "correct": 174,
+     "extra": 0,
+     "total": 180
+    },
+    {
+     "moves": [
+      "point_forward",
+      "punch",
+      "yank_back",
+      "twist"
+     ],
+     "correct": 173,
+     "extra": 0,
+     "total": 180
+    }
+   ]
+  },
+  "safeguards": {
+   "melee": {
+    "lockout 0.0s": {
+     "correct": 32,
+     "expected": 60,
+     "extra": 34
+    },
+    "lockout 0.3s": {
+     "correct": 60,
+     "expected": 60,
+     "extra": 0
+    },
+    "baseline": {
+     "correct": 58,
+     "expected": 60,
+     "extra": 0
+    },
+    "sloppier (1.6x variation)": {
+     "correct": 53,
+     "expected": 60,
+     "extra": 0
+    },
+    "uncalibrated gyro bias 0.1 rad/s": {
+     "correct": 58,
+     "expected": 60,
+     "extra": 0
+    },
+    "Joy-Con remounted (not re-aligned)": {
+     "correct": 14,
+     "expected": 60,
+     "extra": 0
+    },
+    "Joy-Con remounted + 2-pose re-align": {
+     "correct": 58,
+     "expected": 60,
+     "extra": 0
+    }
+   },
+   "bow": {
+    "lockout 0.0s": {
+     "correct": 24,
+     "expected": 60,
+     "extra": 38
+    },
+    "lockout 0.3s": {
+     "correct": 59,
+     "expected": 60,
+     "extra": 0
+    },
+    "baseline": {
+     "correct": 60,
+     "expected": 60,
+     "extra": 0
+    },
+    "sloppier (1.6x variation)": {
+     "correct": 56,
+     "expected": 60,
+     "extra": 0
+    },
+    "uncalibrated gyro bias 0.1 rad/s": {
+     "correct": 60,
+     "expected": 60,
+     "extra": 0
+    },
+    "Joy-Con remounted (not re-aligned)": {
+     "correct": 17,
+     "expected": 60,
+     "extra": 13
+    },
+    "Joy-Con remounted + 2-pose re-align": {
+     "correct": 60,
+     "expected": 60,
+     "extra": 0
+    }
+   }
+  }
+ },
+ "poses": {
+  "same_person": 88.0,
+  "neutral_false": 0.5
+ },
+ "body": {
+  "jog_found": 5,
+  "jog_clips": 6,
+  "false_jogs": 0,
+  "false_hops": 0,
+  "quiet_clips": 12
+ }
+}

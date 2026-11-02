@@ -1,0 +1,23 @@
+== sets
+  melee 5 distinct (the starter set)       gyro 180/180 (+0 extra)   camera+gyro 179/180 (+0 extra, waited for the camera on 11.4% of motions)   camera blocked 180/180 (+0 extra)
+  melee 9: + high/low slash and thrust     gyro 88/180 (+47 extra)   camera+gyro 179/180 (+1 extra, waited for the camera on 69.0% of motions)   camera blocked 61/180 (+0 extra)
+  melee 12: + cross chop, lob, jab         gyro 75/180 (+48 extra)   camera+gyro 144/180 (+12 extra, waited for the camera on 86.6% of motions)   camera blocked 28/180 (+0 extra)
+  bow   5 distinct (the starter set)       gyro 177/180 (+0 extra)   camera+gyro 180/180 (+0 extra, waited for the camera on 14.8% of motions)   camera blocked 178/180 (+0 extra)
+  bow   8: + high/low punch, wide yank     gyro 97/180 (+31 extra)   camera+gyro 177/180 (+0 extra, waited for the camera on 64.5% of motions)   camera blocked 67/180 (+0 extra)
+== camera
+  normal webcam (30 fps)                 179/180 correct, 1 extra
+  15 fps webcam                          179/180 correct, 0 extra
+  twice the blur and lost frames         179/180 correct, 1 extra
+  camera delay misjudged by 80 ms        179/180 correct, 1 extra
+  turned 30 degrees from the camera      145/180 correct, 3 extra
+  camera blocked (falls back to gyro)    61/180 correct, 0 extra
+  sloppier player (1.6x variation)       166/180 correct, 0 extra
+== auto_align
+  no correction                      first 40 moves 65.8%  last 40 62.5%  mount still off by 35.0 deg
+  auto-align, gyro decides           first 40 moves 69.2%  last 40 81.7%  mount still off by 15.9 deg
+  auto-align, camera + gyro decide   first 40 moves 98.3%  last 40 98.3%  mount still off by 2.7 deg
+  no slip, auto-align on (should stay put) first 40 moves 100.0%  last 40 98.3%  mount still off by 2.8 deg
+== bias
+  gyro-only still tracker    offset still wrong by 34.1 deg/s, 87.5% of moves right
+  + camera stillness         offset still wrong by 2.8 deg/s, 100.0% of moves right
+wrote fusion_sim_results.json

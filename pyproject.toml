@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mocap-wow"
+version = "0.2.0"
+description = "Play World of Warcraft on a Mac with your body: webcam poses plus Joy-Cons on PVC weapons, captured and bound to keys on the fly."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11,<3.13"
+classifiers = [
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Topic :: Games/Entertainment",
+  "Topic :: Scientific/Engineering :: Human Machine Interfaces",
+]
+dependencies = [
+  "mediapipe>=1.2",
+  "opencv-contrib-python>=4.9",
+  "numpy>=1.26",
+  "aiohttp>=3.9",
+  "pysdl2>=0.9.16",
+  "pysdl2-dll>=2.30",
+  "pyobjc-framework-Quartz>=10",
+  "pyobjc-framework-ApplicationServices>=10",
+  "pyobjc-framework-WebKit>=10",
+  "pyobjc-framework-Cocoa>=10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pyinstaller>=6", "pillow>=10"]
+lab = ["scipy>=1.11"]
+
+[project.scripts]
+mocap = "mocap.__main__:main"
+
+[project.gui-scripts]
+mocap-app = "mocap.app:main"
+
+[tool.setuptools]
+packages = ["mocap", "mocap.sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

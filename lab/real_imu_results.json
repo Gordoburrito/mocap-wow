@@ -1,0 +1,156 @@
+{
+ "4 cardinal swipes": {
+  "accuracy": 0.9830960854092526,
+  "wrong": 0.0,
+  "rejected": 0.016903914590747332,
+  "tests": 1124,
+  "top_confusions": []
+ },
+ "8 swipes (with diagonals)": {
+  "accuracy": 0.8898756660746003,
+  "wrong": 0.003996447602131439,
+  "rejected": 0.10612788632326821,
+  "tests": 2252,
+  "top_confusions": [
+   [
+    "swipe_downleft -> swipe_left",
+    2
+   ],
+   [
+    "swipe_right -> swipe_upright",
+    2
+   ],
+   [
+    "swipe_downright -> swipe_down",
+    1
+   ],
+   [
+    "swipe_down -> swipe_downright",
+    1
+   ],
+   [
+    "swipe_upleft -> swipe_left",
+    1
+   ],
+   [
+    "swipe_upright -> swipe_right",
+    1
+   ]
+  ]
+ },
+ "stick set: 4 swipes + 2 twists": {
+  "accuracy": 0.9840047393364929,
+  "wrong": 0.0,
+  "rejected": 0.015995260663507108,
+  "tests": 1688,
+  "top_confusions": []
+ },
+ "4 pokes (thrust and back)": {
+  "accuracy": 0.995575221238938,
+  "wrong": 0.0,
+  "rejected": 0.004424778761061947,
+  "tests": 1130,
+  "top_confusions": []
+ },
+ "4 circles": {
+  "accuracy": 0.9537366548042705,
+  "wrong": 0.0,
+  "rejected": 0.046263345195729534,
+  "tests": 1124,
+  "top_confusions": []
+ },
+ "all 20": {
+  "accuracy": 0.9252220248667851,
+  "wrong": 0.0015985790408525756,
+  "rejected": 0.07317939609236235,
+  "tests": 5630,
+  "top_confusions": [
+   [
+    "swipe_downleft -> swipe_left",
+    2
+   ],
+   [
+    "swipe_right -> swipe_upright",
+    2
+   ],
+   [
+    "swipe_downright -> swipe_down",
+    1
+   ],
+   [
+    "swipe_down -> swipe_downright",
+    1
+   ],
+   [
+    "swipe_upleft -> swipe_left",
+    1
+   ],
+   [
+    "swipe_upright -> swipe_right",
+    1
+   ]
+  ]
+ },
+ "open set: stick set vs 14 unknown gestures": {
+  "accuracy": 0.9840047393364929,
+  "wrong": 0.0,
+  "rejected": 0.015995260663507108,
+  "tests": 1688,
+  "top_confusions": [],
+  "false_accept": 0.1036631900279827,
+  "open_tests": 7862
+ },
+ "stick set, 1 takes": {
+  "accuracy": 0.9046833773087071,
+  "wrong": 0.0,
+  "rejected": 0.09531662269129287,
+  "tests": 3032,
+  "top_confusions": []
+ },
+ "stick set, 3 takes": {
+  "accuracy": 0.975,
+  "wrong": 0.0,
+  "rejected": 0.025,
+  "tests": 2360,
+  "top_confusions": []
+ },
+ "stick set, 5 takes": {
+  "accuracy": 0.9840047393364929,
+  "wrong": 0.0,
+  "rejected": 0.015995260663507108,
+  "tests": 1688,
+  "top_confusions": []
+ },
+ "all 20, gyro only": {
+  "accuracy": 0.9259325044404974,
+  "wrong": 0.002841918294849023,
+  "rejected": 0.07122557726465364,
+  "tests": 5630,
+  "top_confusions": [
+   [
+    "swipe_downleft -> swipe_left",
+    4
+   ],
+   [
+    "swipe_upright -> swipe_right",
+    2
+   ],
+   [
+    "swipe_right -> swipe_upright",
+    2
+   ],
+   [
+    "cir_hor_clk -> cir_ver_clk",
+    1
+   ],
+   [
+    "cir_ver_clk -> cir_hor_clk",
+    1
+   ],
+   [
+    "swipe_down -> swipe_downright",
+    1
+   ]
+  ]
+ }
+}

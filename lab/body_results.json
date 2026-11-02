@@ -1,0 +1,210 @@
+{
+ "jog in place (should jog)": [
+  {
+   "file": "a22_s1_t1_color.avi",
+   "seconds": 3.3,
+   "body_seen": "51/51",
+   "jog_starts": 1,
+   "jogging_seconds": 1.1,
+   "first_jog_at": 2.2,
+   "hops": 2,
+   "reference_jumps": 2
+  },
+  {
+   "file": "a22_s2_t1_color.avi",
+   "seconds": 2.8,
+   "body_seen": "43/43",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 2
+  },
+  {
+   "file": "a22_s3_t1_color.avi",
+   "seconds": 3.1,
+   "body_seen": "47/47",
+   "jog_starts": 1,
+   "jogging_seconds": 0.7,
+   "first_jog_at": 1.73,
+   "hops": 0,
+   "reference_jumps": 2
+  },
+  {
+   "file": "a22_s4_t1_color.avi",
+   "seconds": 2.5,
+   "body_seen": "39/39",
+   "jog_starts": 1,
+   "jogging_seconds": 1.0,
+   "first_jog_at": 1.27,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a22_s5_t1_color.avi",
+   "seconds": 3.7,
+   "body_seen": "57/57",
+   "jog_starts": 1,
+   "jogging_seconds": 1.6,
+   "first_jog_at": 1.87,
+   "hops": 3,
+   "reference_jumps": 2
+  },
+  {
+   "file": "a22_s6_t1_color.avi",
+   "seconds": 4.0,
+   "body_seen": "61/61",
+   "jog_starts": 1,
+   "jogging_seconds": 1.1,
+   "first_jog_at": 2.13,
+   "hops": 1,
+   "reference_jumps": 3
+  }
+ ],
+ "sit to stand (should do nothing)": [
+  {
+   "file": "a24_s1_t1_color.avi",
+   "seconds": 2.5,
+   "body_seen": "39/39",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 0
+  },
+  {
+   "file": "a24_s2_t1_color.avi",
+   "seconds": 2.6,
+   "body_seen": "40/40",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a24_s3_t1_color.avi",
+   "seconds": 2.7,
+   "body_seen": "42/42",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 0
+  },
+  {
+   "file": "a24_s4_t1_color.avi",
+   "seconds": 2.7,
+   "body_seen": "41/41",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 0
+  },
+  {
+   "file": "a24_s5_t1_color.avi",
+   "seconds": 2.7,
+   "body_seen": "42/42",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 0
+  },
+  {
+   "file": "a24_s6_t1_color.avi",
+   "seconds": 2.9,
+   "body_seen": "44/44",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  }
+ ],
+ "squats (should do nothing)": [
+  {
+   "file": "a27_s1_t1_color.avi",
+   "seconds": 4.9,
+   "body_seen": "74/74",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a27_s2_t1_color.avi",
+   "seconds": 2.7,
+   "body_seen": "42/42",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a27_s3_t1_color.avi",
+   "seconds": 4.4,
+   "body_seen": "67/67",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a27_s4_t1_color.avi",
+   "seconds": 3.3,
+   "body_seen": "51/51",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a27_s5_t1_color.avi",
+   "seconds": 4.4,
+   "body_seen": "67/67",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  },
+  {
+   "file": "a27_s6_t1_color.avi",
+   "seconds": 5.5,
+   "body_seen": "83/83",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 1
+  }
+ ],
+ "jumping jacks (each is a hop)": [
+  {
+   "file": "jacks_burpees.webm",
+   "seconds": 45.2,
+   "body_seen": "1356/1356",
+   "jog_starts": 3,
+   "jogging_seconds": 2.1,
+   "first_jog_at": 20.22,
+   "hops": 40,
+   "reference_jumps": 18
+  },
+  {
+   "file": "jumping_jack_slow.webm",
+   "seconds": 11.5,
+   "body_seen": "0/347",
+   "jog_starts": 0,
+   "jogging_seconds": 0.0,
+   "first_jog_at": null,
+   "hops": 0,
+   "reference_jumps": 0
+  }
+ ]
+}

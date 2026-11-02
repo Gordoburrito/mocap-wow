@@ -1,0 +1,27 @@
+hand finder: the sensor moves with the camera's 'left' wrist {'left': 261, 'right': 186}
+camera delay found from the moves: 260 ms
+671 trials (mediapipe), 653 with a usable hand path
+  all 21 moves, gyro   : 87.8% correct, 0.9% wrong, 11.3% rejected
+  all 21 moves, camera : 84.8% correct, 1.6% wrong, 13.6% rejected
+  all 21 moves, fused  : 90.3% correct, 0.3% wrong, 9.4% rejected
+  all 21 moves, blocked: 84.6% correct, 0.7% wrong, 14.6% rejected
+  10 swing-like moves, gyro   : 86.2% correct, 1.6% wrong, 12.2% rejected
+  10 swing-like moves, camera : 88.1% correct, 1.9% wrong, 10.0% rejected
+  10 swing-like moves, fused  : 90.0% correct, 0.0% wrong, 10.0% rejected
+  10 swing-like moves, blocked: 80.6% correct, 1.2% wrong, 18.1% rejected
+Moves vs accuracy (random sets):
+   4 moves: gyro  93.3% (0.3% wrong)  camera  91.3% (0.9% wrong)  fused  94.3% (0.1% wrong)
+   6 moves: gyro  93.9% (0.2% wrong)  camera  90.9% (0.8% wrong)  fused  94.6% (0.1% wrong)
+   8 moves: gyro  90.6% (0.4% wrong)  camera  88.1% (1.2% wrong)  fused  92.4% (0.1% wrong)
+  10 moves: gyro  90.2% (0.3% wrong)  camera  89.0% (0.9% wrong)  fused  93.0% (0.2% wrong)
+  12 moves: gyro  90.6% (0.5% wrong)  camera  88.7% (1.2% wrong)  fused  91.9% (0.1% wrong)
+  15 moves: gyro  89.9% (0.8% wrong)  camera  88.1% (1.5% wrong)  fused  91.7% (0.1% wrong)
+  18 moves: gyro  88.2% (0.7% wrong)  camera  85.6% (1.8% wrong)  fused  90.5% (0.2% wrong)
+  21 moves: gyro  87.8% (0.9% wrong)  camera  84.8% (1.6% wrong)  fused  90.3% (0.3% wrong)
+  largest set at >=95% correct, <=1% wrong, gyro: 10 moves
+  largest set at >=95% correct, <=1% wrong, fused: 15 moves
+  hand finding: {'single_move_correct_pct': 86.6, 'three_moves_correct_pct': np.float64(97.2), 'moves': 447, 'groups_of_3': 144}
+  lag finding: {'dataset_offset_s': 0.26, 'shift_0.06': {'median_found': 0.06, 'within_20ms_pct': 100.0, 'people': 8}, 'shift_0.12': {'median_found': 0.12, 'within_20ms_pct': 87.5, 'people': 8}}
+  stillness: {'imu_still_windows': 116, 'camera_agrees_still_pct': 52.6, 'imu_moving_windows': 18440, 'camera_wrongly_still_pct': 8.59, 'still_wrist_wander_sw': {'median': 0.065, 'p90': 0.245}}
+  bias recovery: {'true_offset_deg_s': 32.0, 'gyro_only_error_deg_s': 32.0, 'camera_error_deg_s': 17.7, 'camera_updates_per_person': 2, 'gyro_only_still_limit_deg_s': 14.3}
+wrote fusion_real_results.json

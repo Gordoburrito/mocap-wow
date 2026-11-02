@@ -1,0 +1,49 @@
+
+== melee: all 14 gestures recorded at once ==
+  slash_left       recall  97.5%   most often mistaken for: (none) (1)
+  slash_right      recall 100.0%   most often mistaken for: slash_left (0)
+  overhead_chop    recall  60.0%   most often mistaken for: (none) (9)
+  rising_slash     recall  52.5%   most often mistaken for: (none) (13)
+  diagonal_slash   recall 100.0%   most often mistaken for: slash_left (0)
+  thrust           recall  82.5%   most often mistaken for: (none) (6)
+  quick_jab        recall  77.5%   most often mistaken for: (none) (9)
+  spin             recall  95.0%   most often mistaken for: (none) (2)
+  wrist_twist      recall  85.0%   most often mistaken for: (none) (6)
+  overhand_lob     recall  70.0%   most often mistaken for: (none) (9)
+  underhand_toss   recall  52.5%   most often mistaken for: (none) (16)
+  circle           recall 100.0%   most often mistaken for: slash_left (0)
+  shake            recall 100.0%   most often mistaken for: slash_left (0)
+  quick_draws_x3   recall 100.0%   most often mistaken for: slash_left (0)
+  false fires: 0.76/min {'return': 2, 'reposition': 0, 'fidget': 0, 'walk': 0, 'idle': 0}
+  most confusable pairs: rising_slash|underhand_toss 38%, overhead_chop|overhand_lob 32%, thrust|quick_jab 22%, wrist_twist|shake 10%, spin|wrist_twist 6%, overhead_chop|spin 4%
+  recommended set: ['slash_left', 'slash_right', 'overhead_chop', 'rising_slash', 'thrust']
+    recall 98.5%, false fires 1.56/min {'return': 4, 'reposition': 0, 'fidget': 0, 'walk': 0, 'idle': 0}
+    fight test (lockout 0.0s): 32/60 correct, 28 missed, 34 extra
+    fight test (lockout 0.3s): 60/60 correct, 0 missed, 0 extra
+    baseline: 58/60 correct, 2 missed, 0 extra
+    sloppier (1.6x variation): 53/60 correct, 7 missed, 0 extra
+    uncalibrated gyro bias 0.1 rad/s: 58/60 correct, 2 missed, 0 extra
+    Joy-Con remounted (not re-aligned): 14/60 correct, 46 missed, 0 extra
+    Joy-Con remounted + 2-pose re-align: 58/60 correct, 2 missed, 0 extra
+
+== bow: all 9 gestures recorded at once ==
+  punch            recall 100.0%   most often mistaken for: yank_back (0)
+  yank_back        recall 100.0%   most often mistaken for: punch (0)
+  fan              recall  95.0%   most often mistaken for: (none) (2)
+  raise            recall  82.5%   most often mistaken for: (none) (7)
+  point_forward    recall 100.0%   most often mistaken for: punch (0)
+  cant_left        recall 100.0%   most often mistaken for: punch (0)
+  cant_right       recall  95.0%   most often mistaken for: (none) (2)
+  twist            recall 100.0%   most often mistaken for: punch (0)
+  shake            recall 100.0%   most often mistaken for: punch (0)
+  false fires: 1.54/min {'return': 3, 'reposition': 0, 'fidget': 1, 'walk': 0, 'idle': 0}
+  most confusable pairs: punch|raise 14%, yank_back|raise 14%, raise|shake 12%, raise|point_forward 10%, raise|cant_left 10%, raise|cant_right 10%
+  recommended set: ['point_forward', 'punch', 'yank_back', 'cant_left']
+    recall 97.5%, false fires 0.79/min {'return': 2, 'reposition': 0, 'fidget': 0, 'walk': 0, 'idle': 0}
+    fight test (lockout 0.0s): 24/60 correct, 36 missed, 38 extra
+    fight test (lockout 0.3s): 59/60 correct, 1 missed, 0 extra
+    baseline: 60/60 correct, 0 missed, 0 extra
+    sloppier (1.6x variation): 56/60 correct, 4 missed, 0 extra
+    uncalibrated gyro bias 0.1 rad/s: 60/60 correct, 0 missed, 0 extra
+    Joy-Con remounted (not re-aligned): 17/60 correct, 43 missed, 13 extra
+    Joy-Con remounted + 2-pose re-align: 60/60 correct, 0 missed, 0 extra

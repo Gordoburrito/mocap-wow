@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.pytest_cache/
+models/
+# Your recorded gestures and bindings live here.
+profiles/
+data/
+
+# Mac app build output
+build/
+dist/
+
+# Research notes quote third-party sources at length; they stay local.
+research_notes/
+reports/

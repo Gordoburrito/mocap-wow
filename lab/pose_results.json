@@ -1,0 +1,62 @@
+{
+ "found": {
+  "arms_up": [
+   29,
+   40
+  ],
+  "crossed_arms": [
+   37,
+   40
+  ],
+  "hands_on_hips": [
+   29,
+   40
+  ],
+  "archer": [
+   21,
+   40
+  ],
+  "t_pose": [
+   3,
+   8
+  ],
+  "neutral": [
+   35,
+   50
+  ]
+ },
+ "cross_person_sensitivity_1.0": {
+  "recall": {
+   "arms_up": 0.011458333333333333,
+   "crossed_arms": 0.25546875,
+   "hands_on_hips": 0.04583333333333333,
+   "archer": 0.1515625
+  },
+  "wrong": {
+   "arms_up": 0.011458333333333333,
+   "crossed_arms": 0.00625,
+   "hands_on_hips": 0.0020833333333333333,
+   "archer": 0.0046875
+  },
+  "neutral_false_trigger": 0.01
+ },
+ "cross_person_sensitivity_1.5": {
+  "recall": {
+   "arms_up": 0.10520833333333333,
+   "crossed_arms": 0.5515625,
+   "hands_on_hips": 0.25,
+   "archer": 0.265625
+  },
+  "wrong": {
+   "arms_up": 0.09583333333333334,
+   "crossed_arms": 0.01640625,
+   "hands_on_hips": 0.015625,
+   "archer": 0.0640625
+  },
+  "neutral_false_trigger": 0.06375
+ },
+ "same_person_variation": {
+  "accuracy": 0.88,
+  "neutral_false_trigger": 0.005
+ }
+}

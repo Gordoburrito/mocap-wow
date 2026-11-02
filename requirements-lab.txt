@@ -1,0 +1,3 @@
+# Extra packages for the experiments in lab/ (not needed to play).
+-r requirements.txt
+scipy>=1.11

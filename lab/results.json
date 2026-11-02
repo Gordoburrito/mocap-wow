@@ -1,0 +1,906 @@
+{
+ "melee": {
+  "all": {
+   "device": "melee",
+   "gestures": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "rising_slash",
+    "diagonal_slash",
+    "thrust",
+    "quick_jab",
+    "spin",
+    "wrist_twist",
+    "overhand_lob",
+    "underhand_toss",
+    "circle",
+    "shake",
+    "quick_draws_x3"
+   ],
+   "per_gesture": {
+    "slash_left": {
+     "recall": 0.975,
+     "capture_attempts": 5
+    },
+    "slash_right": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "overhead_chop": {
+     "recall": 0.6,
+     "capture_attempts": 5
+    },
+    "rising_slash": {
+     "recall": 0.525,
+     "capture_attempts": 5
+    },
+    "diagonal_slash": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "thrust": {
+     "recall": 0.825,
+     "capture_attempts": 5
+    },
+    "quick_jab": {
+     "recall": 0.775,
+     "capture_attempts": 5
+    },
+    "spin": {
+     "recall": 0.95,
+     "capture_attempts": 5
+    },
+    "wrist_twist": {
+     "recall": 0.85,
+     "capture_attempts": 5
+    },
+    "overhand_lob": {
+     "recall": 0.7,
+     "capture_attempts": 5
+    },
+    "underhand_toss": {
+     "recall": 0.525,
+     "capture_attempts": 5
+    },
+    "circle": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "shake": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "quick_draws_x3": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    }
+   },
+   "confusion": {
+    "slash_left": {
+     "slash_left": 39,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 1
+    },
+    "slash_right": {
+     "slash_left": 0,
+     "slash_right": 40,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 0
+    },
+    "overhead_chop": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 24,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 7,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 9
+    },
+    "rising_slash": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 21,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 6,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 13
+    },
+    "diagonal_slash": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 40,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 0
+    },
+    "thrust": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 33,
+     "quick_jab": 1,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 6
+    },
+    "quick_jab": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 31,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 9
+    },
+    "spin": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 38,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 2
+    },
+    "wrist_twist": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 34,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 6
+    },
+    "overhand_lob": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 3,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 28,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 9
+    },
+    "underhand_toss": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 3,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 21,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 16
+    },
+    "circle": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 40,
+     "shake": 0,
+     "quick_draws_x3": 0,
+     "(none)": 0
+    },
+    "shake": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 40,
+     "quick_draws_x3": 0,
+     "(none)": 0
+    },
+    "quick_draws_x3": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "diagonal_slash": 0,
+     "thrust": 0,
+     "quick_jab": 0,
+     "spin": 0,
+     "wrist_twist": 0,
+     "overhand_lob": 0,
+     "underhand_toss": 0,
+     "circle": 0,
+     "shake": 0,
+     "quick_draws_x3": 40,
+     "(none)": 0
+    }
+   },
+   "false_fires": 2,
+   "false_fires_per_min": 0.7551206619891138,
+   "false_by_kind": {
+    "return": 2,
+    "reposition": 0,
+    "fidget": 0,
+    "walk": 0,
+    "idle": 0
+   },
+   "mean_recall": 0.8375
+  },
+  "pairs": {
+   "slash_left|slash_right": 0.0,
+   "slash_left|overhead_chop": 0.0,
+   "slash_left|rising_slash": 0.0,
+   "slash_left|diagonal_slash": 0.020000000000000018,
+   "slash_left|thrust": 0.0,
+   "slash_left|quick_jab": 0.0,
+   "slash_left|spin": 0.020000000000000018,
+   "slash_left|wrist_twist": 0.020000000000000018,
+   "slash_left|overhand_lob": 0.0,
+   "slash_left|underhand_toss": 0.0,
+   "slash_left|circle": 0.0,
+   "slash_left|shake": 0.020000000000000018,
+   "slash_left|quick_draws_x3": 0.0,
+   "slash_right|overhead_chop": 0.0,
+   "slash_right|rising_slash": 0.0,
+   "slash_right|diagonal_slash": 0.020000000000000018,
+   "slash_right|thrust": 0.0,
+   "slash_right|quick_jab": 0.0,
+   "slash_right|spin": 0.020000000000000018,
+   "slash_right|wrist_twist": 0.020000000000000018,
+   "slash_right|overhand_lob": 0.0,
+   "slash_right|underhand_toss": 0.0,
+   "slash_right|circle": 0.0,
+   "slash_right|shake": 0.020000000000000018,
+   "slash_right|quick_draws_x3": 0.0,
+   "overhead_chop|rising_slash": 0.0,
+   "overhead_chop|diagonal_slash": 0.0,
+   "overhead_chop|thrust": 0.0,
+   "overhead_chop|quick_jab": 0.0,
+   "overhead_chop|spin": 0.040000000000000036,
+   "overhead_chop|wrist_twist": 0.0,
+   "overhead_chop|overhand_lob": 0.32000000000000006,
+   "overhead_chop|underhand_toss": 0.020000000000000018,
+   "overhead_chop|circle": 0.0,
+   "overhead_chop|shake": 0.0,
+   "overhead_chop|quick_draws_x3": 0.020000000000000018,
+   "rising_slash|diagonal_slash": 0.0,
+   "rising_slash|thrust": 0.0,
+   "rising_slash|quick_jab": 0.020000000000000018,
+   "rising_slash|spin": 0.040000000000000036,
+   "rising_slash|wrist_twist": 0.0,
+   "rising_slash|overhand_lob": 0.0,
+   "rising_slash|underhand_toss": 0.38,
+   "rising_slash|circle": 0.0,
+   "rising_slash|shake": 0.0,
+   "rising_slash|quick_draws_x3": 0.0,
+   "diagonal_slash|thrust": 0.020000000000000018,
+   "diagonal_slash|quick_jab": 0.0,
+   "diagonal_slash|spin": 0.040000000000000036,
+   "diagonal_slash|wrist_twist": 0.0,
+   "diagonal_slash|overhand_lob": 0.020000000000000018,
+   "diagonal_slash|underhand_toss": 0.040000000000000036,
+   "diagonal_slash|circle": 0.0,
+   "diagonal_slash|shake": 0.0,
+   "diagonal_slash|quick_draws_x3": 0.020000000000000018,
+   "thrust|quick_jab": 0.21999999999999997,
+   "thrust|spin": 0.020000000000000018,
+   "thrust|wrist_twist": 0.0,
+   "thrust|overhand_lob": 0.0,
+   "thrust|underhand_toss": 0.0,
+   "thrust|circle": 0.0,
+   "thrust|shake": 0.0,
+   "thrust|quick_draws_x3": 0.0,
+   "quick_jab|spin": 0.020000000000000018,
+   "quick_jab|wrist_twist": 0.0,
+   "quick_jab|overhand_lob": 0.040000000000000036,
+   "quick_jab|underhand_toss": 0.040000000000000036,
+   "quick_jab|circle": 0.040000000000000036,
+   "quick_jab|shake": 0.020000000000000018,
+   "quick_jab|quick_draws_x3": 0.040000000000000036,
+   "spin|wrist_twist": 0.06000000000000005,
+   "spin|overhand_lob": 0.0,
+   "spin|underhand_toss": 0.0,
+   "spin|circle": 0.0,
+   "spin|shake": 0.020000000000000018,
+   "spin|quick_draws_x3": 0.040000000000000036,
+   "wrist_twist|overhand_lob": 0.0,
+   "wrist_twist|underhand_toss": 0.0,
+   "wrist_twist|circle": 0.0,
+   "wrist_twist|shake": 0.09999999999999998,
+   "wrist_twist|quick_draws_x3": 0.0,
+   "overhand_lob|underhand_toss": 0.0,
+   "overhand_lob|circle": 0.020000000000000018,
+   "overhand_lob|shake": 0.0,
+   "overhand_lob|quick_draws_x3": 0.020000000000000018,
+   "underhand_toss|circle": 0.040000000000000036,
+   "underhand_toss|shake": 0.0,
+   "underhand_toss|quick_draws_x3": 0.020000000000000018,
+   "circle|shake": 0.0,
+   "circle|quick_draws_x3": 0.0,
+   "shake|quick_draws_x3": 0.0
+  },
+  "recommended": [
+   "slash_left",
+   "slash_right",
+   "overhead_chop",
+   "rising_slash",
+   "thrust"
+  ],
+  "recommended_eval": {
+   "device": "melee",
+   "gestures": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "rising_slash",
+    "thrust"
+   ],
+   "per_gesture": {
+    "slash_left": {
+     "recall": 0.975,
+     "capture_attempts": 5
+    },
+    "slash_right": {
+     "recall": 0.975,
+     "capture_attempts": 5
+    },
+    "overhead_chop": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "rising_slash": {
+     "recall": 0.975,
+     "capture_attempts": 5
+    },
+    "thrust": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    }
+   },
+   "confusion": {
+    "slash_left": {
+     "slash_left": 39,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "thrust": 0,
+     "(none)": 1
+    },
+    "slash_right": {
+     "slash_left": 0,
+     "slash_right": 39,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "thrust": 0,
+     "(none)": 1
+    },
+    "overhead_chop": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 40,
+     "rising_slash": 0,
+     "thrust": 0,
+     "(none)": 0
+    },
+    "rising_slash": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 39,
+     "thrust": 0,
+     "(none)": 1
+    },
+    "thrust": {
+     "slash_left": 0,
+     "slash_right": 0,
+     "overhead_chop": 0,
+     "rising_slash": 0,
+     "thrust": 40,
+     "(none)": 0
+    }
+   },
+   "false_fires": 4,
+   "false_fires_per_min": 1.55899834356426,
+   "false_by_kind": {
+    "return": 4,
+    "reposition": 0,
+    "fidget": 0,
+    "walk": 0,
+    "idle": 0
+   },
+   "mean_recall": 0.9850000000000001
+  },
+  "combo": {
+   "lockout 0.0s": {
+    "expected": 60,
+    "fired": 66,
+    "correct": 32,
+    "missed": 28,
+    "extra": 34
+   },
+   "lockout 0.3s": {
+    "expected": 60,
+    "fired": 60,
+    "correct": 60,
+    "missed": 0,
+    "extra": 0
+   }
+  },
+  "robustness": {
+   "baseline": {
+    "expected": 60,
+    "fired": 58,
+    "correct": 58,
+    "missed": 2,
+    "extra": 0
+   },
+   "sloppier (1.6x variation)": {
+    "expected": 60,
+    "fired": 53,
+    "correct": 53,
+    "missed": 7,
+    "extra": 0
+   },
+   "uncalibrated gyro bias 0.1 rad/s": {
+    "expected": 60,
+    "fired": 58,
+    "correct": 58,
+    "missed": 2,
+    "extra": 0
+   },
+   "Joy-Con remounted (not re-aligned)": {
+    "expected": 60,
+    "fired": 14,
+    "correct": 14,
+    "missed": 46,
+    "extra": 0
+   },
+   "Joy-Con remounted + 2-pose re-align": {
+    "expected": 60,
+    "fired": 58,
+    "correct": 58,
+    "missed": 2,
+    "extra": 0
+   }
+  }
+ },
+ "bow": {
+  "all": {
+   "device": "bow",
+   "gestures": [
+    "punch",
+    "yank_back",
+    "fan",
+    "raise",
+    "point_forward",
+    "cant_left",
+    "cant_right",
+    "twist",
+    "shake"
+   ],
+   "per_gesture": {
+    "punch": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "yank_back": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "fan": {
+     "recall": 0.95,
+     "capture_attempts": 5
+    },
+    "raise": {
+     "recall": 0.825,
+     "capture_attempts": 8
+    },
+    "point_forward": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "cant_left": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "cant_right": {
+     "recall": 0.95,
+     "capture_attempts": 5
+    },
+    "twist": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "shake": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    }
+   },
+   "confusion": {
+    "punch": {
+     "punch": 40,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 0
+    },
+    "yank_back": {
+     "punch": 0,
+     "yank_back": 40,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 0
+    },
+    "fan": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 38,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 2
+    },
+    "raise": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 33,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 7
+    },
+    "point_forward": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 40,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 0
+    },
+    "cant_left": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 40,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 0
+    },
+    "cant_right": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 38,
+     "twist": 0,
+     "shake": 0,
+     "(none)": 2
+    },
+    "twist": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 40,
+     "shake": 0,
+     "(none)": 0
+    },
+    "shake": {
+     "punch": 0,
+     "yank_back": 0,
+     "fan": 0,
+     "raise": 0,
+     "point_forward": 0,
+     "cant_left": 0,
+     "cant_right": 0,
+     "twist": 0,
+     "shake": 40,
+     "(none)": 0
+    }
+   },
+   "false_fires": 4,
+   "false_fires_per_min": 1.5394977388626963,
+   "false_by_kind": {
+    "return": 3,
+    "reposition": 0,
+    "fidget": 1,
+    "walk": 0,
+    "idle": 0
+   },
+   "mean_recall": 0.9694444444444444
+  },
+  "pairs": {
+   "punch|yank_back": 0.0,
+   "punch|fan": 0.020000000000000018,
+   "punch|raise": 0.14,
+   "punch|point_forward": 0.0,
+   "punch|cant_left": 0.0,
+   "punch|cant_right": 0.0,
+   "punch|twist": 0.040000000000000036,
+   "punch|shake": 0.0,
+   "yank_back|fan": 0.020000000000000018,
+   "yank_back|raise": 0.14,
+   "yank_back|point_forward": 0.0,
+   "yank_back|cant_left": 0.0,
+   "yank_back|cant_right": 0.0,
+   "yank_back|twist": 0.040000000000000036,
+   "yank_back|shake": 0.0,
+   "fan|raise": 0.06000000000000005,
+   "fan|point_forward": 0.0,
+   "fan|cant_left": 0.020000000000000018,
+   "fan|cant_right": 0.040000000000000036,
+   "fan|twist": 0.08000000000000007,
+   "fan|shake": 0.020000000000000018,
+   "raise|point_forward": 0.09999999999999998,
+   "raise|cant_left": 0.09999999999999998,
+   "raise|cant_right": 0.09999999999999998,
+   "raise|twist": 0.06000000000000005,
+   "raise|shake": 0.12,
+   "point_forward|cant_left": 0.0,
+   "point_forward|cant_right": 0.0,
+   "point_forward|twist": 0.0,
+   "point_forward|shake": 0.0,
+   "cant_left|cant_right": 0.0,
+   "cant_left|twist": 0.0,
+   "cant_left|shake": 0.0,
+   "cant_right|twist": 0.0,
+   "cant_right|shake": 0.0,
+   "twist|shake": 0.040000000000000036
+  },
+  "recommended": [
+   "point_forward",
+   "punch",
+   "yank_back",
+   "cant_left"
+  ],
+  "recommended_eval": {
+   "device": "bow",
+   "gestures": [
+    "point_forward",
+    "punch",
+    "yank_back",
+    "cant_left"
+   ],
+   "per_gesture": {
+    "point_forward": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "punch": {
+     "recall": 0.925,
+     "capture_attempts": 5
+    },
+    "yank_back": {
+     "recall": 1.0,
+     "capture_attempts": 5
+    },
+    "cant_left": {
+     "recall": 0.975,
+     "capture_attempts": 5
+    }
+   },
+   "confusion": {
+    "point_forward": {
+     "point_forward": 40,
+     "punch": 0,
+     "yank_back": 0,
+     "cant_left": 0,
+     "(none)": 0
+    },
+    "punch": {
+     "point_forward": 0,
+     "punch": 37,
+     "yank_back": 0,
+     "cant_left": 0,
+     "(none)": 3
+    },
+    "yank_back": {
+     "point_forward": 0,
+     "punch": 0,
+     "yank_back": 40,
+     "cant_left": 0,
+     "(none)": 0
+    },
+    "cant_left": {
+     "point_forward": 0,
+     "punch": 0,
+     "yank_back": 0,
+     "cant_left": 39,
+     "(none)": 1
+    }
+   },
+   "false_fires": 2,
+   "false_fires_per_min": 0.7878668505022652,
+   "false_by_kind": {
+    "return": 2,
+    "reposition": 0,
+    "fidget": 0,
+    "walk": 0,
+    "idle": 0
+   },
+   "mean_recall": 0.975
+  },
+  "combo": {
+   "lockout 0.0s": {
+    "expected": 60,
+    "fired": 62,
+    "correct": 24,
+    "missed": 36,
+    "extra": 38
+   },
+   "lockout 0.3s": {
+    "expected": 60,
+    "fired": 59,
+    "correct": 59,
+    "missed": 1,
+    "extra": 0
+   }
+  },
+  "robustness": {
+   "baseline": {
+    "expected": 60,
+    "fired": 60,
+    "correct": 60,
+    "missed": 0,
+    "extra": 0
+   },
+   "sloppier (1.6x variation)": {
+    "expected": 60,
+    "fired": 56,
+    "correct": 56,
+    "missed": 4,
+    "extra": 0
+   },
+   "uncalibrated gyro bias 0.1 rad/s": {
+    "expected": 60,
+    "fired": 60,
+    "correct": 60,
+    "missed": 0,
+    "extra": 0
+   },
+   "Joy-Con remounted (not re-aligned)": {
+    "expected": 60,
+    "fired": 30,
+    "correct": 17,
+    "missed": 43,
+    "extra": 13
+   },
+   "Joy-Con remounted + 2-pose re-align": {
+    "expected": 60,
+    "fired": 60,
+    "correct": 60,
+    "missed": 0,
+    "extra": 0
+   }
+  }
+ }
+}

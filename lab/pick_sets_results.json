@@ -1,0 +1,147 @@
+{
+ "melee": [
+  {
+   "moves": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "thrust",
+    "circle"
+   ],
+   "correct": 180,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "rising_slash",
+    "thrust"
+   ],
+   "correct": 178,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "spin",
+    "thrust"
+   ],
+   "correct": 177,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "circle",
+    "wrist_twist"
+   ],
+   "correct": 177,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "slash_left",
+    "overhead_chop",
+    "thrust",
+    "circle",
+    "wrist_twist"
+   ],
+   "correct": 176,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "slash_left",
+    "slash_right",
+    "overhead_chop",
+    "thrust",
+    "wrist_twist"
+   ],
+   "correct": 170,
+   "extra": 8,
+   "total": 180
+  },
+  {
+   "moves": [
+    "slash_left",
+    "diagonal_slash",
+    "overhead_chop",
+    "thrust",
+    "circle"
+   ],
+   "correct": 138,
+   "extra": 38,
+   "total": 180
+  }
+ ],
+ "bow": [
+  {
+   "moves": [
+    "point_forward",
+    "punch",
+    "cant_left",
+    "twist"
+   ],
+   "correct": 177,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "point_forward",
+    "punch",
+    "yank_back",
+    "cant_left",
+    "twist"
+   ],
+   "correct": 176,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "point_forward",
+    "punch",
+    "yank_back",
+    "cant_left",
+    "cant_right"
+   ],
+   "correct": 176,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "point_forward",
+    "punch",
+    "yank_back",
+    "cant_left"
+   ],
+   "correct": 174,
+   "extra": 0,
+   "total": 180
+  },
+  {
+   "moves": [
+    "point_forward",
+    "punch",
+    "yank_back",
+    "twist"
+   ],
+   "correct": 173,
+   "extra": 0,
+   "total": 180
+  }
+ ]
+}

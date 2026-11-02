@@ -1,0 +1,14 @@
+== melee
+  180/180 correct, 0 extra   ['slash_left', 'slash_right', 'overhead_chop', 'thrust', 'circle']
+  178/180 correct, 0 extra   ['slash_left', 'slash_right', 'overhead_chop', 'rising_slash', 'thrust']
+  177/180 correct, 0 extra   ['slash_left', 'slash_right', 'overhead_chop', 'spin', 'thrust']
+  177/180 correct, 0 extra   ['slash_left', 'slash_right', 'overhead_chop', 'circle', 'wrist_twist']
+  176/180 correct, 0 extra   ['slash_left', 'overhead_chop', 'thrust', 'circle', 'wrist_twist']
+  170/180 correct, 8 extra   ['slash_left', 'slash_right', 'overhead_chop', 'thrust', 'wrist_twist']
+  138/180 correct, 38 extra   ['slash_left', 'diagonal_slash', 'overhead_chop', 'thrust', 'circle']
+== bow
+  177/180 correct, 0 extra   ['point_forward', 'punch', 'cant_left', 'twist']
+  176/180 correct, 0 extra   ['point_forward', 'punch', 'yank_back', 'cant_left', 'twist']
+  176/180 correct, 0 extra   ['point_forward', 'punch', 'yank_back', 'cant_left', 'cant_right']
+  174/180 correct, 0 extra   ['point_forward', 'punch', 'yank_back', 'cant_left']
+  173/180 correct, 0 extra   ['point_forward', 'punch', 'yank_back', 'twist']

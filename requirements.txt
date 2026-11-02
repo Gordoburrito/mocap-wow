@@ -1,0 +1,11 @@
+mediapipe>=1.2
+opencv-contrib-python>=4.9
+numpy>=1.26
+aiohttp>=3.9
+pysdl2>=0.9.16
+pysdl2-dll>=2.30
+pyobjc-framework-Quartz>=10
+pyobjc-framework-ApplicationServices>=10
+pyobjc-framework-WebKit>=10
+pyobjc-framework-Cocoa>=10
+pytest>=8

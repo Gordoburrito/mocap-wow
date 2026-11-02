@@ -1,0 +1,270 @@
+{
+ "sets": {
+  "melee: 5 distinct (the starter set)": {
+   "gyro": {
+    "moves": 180,
+    "correct": 180,
+    "missed": 0,
+    "extra": 0,
+    "waited": 0,
+    "decisions": 201,
+    "correct_pct": 100.0,
+    "waited_for_camera_pct": 0.0
+   },
+   "fused": {
+    "moves": 180,
+    "correct": 179,
+    "missed": 1,
+    "extra": 0,
+    "waited": 23,
+    "decisions": 201,
+    "correct_pct": 99.4,
+    "waited_for_camera_pct": 11.4
+   },
+   "camera_blocked": {
+    "moves": 180,
+    "correct": 180,
+    "missed": 0,
+    "extra": 0,
+    "waited": 35,
+    "decisions": 211,
+    "correct_pct": 100.0,
+    "waited_for_camera_pct": 16.6
+   }
+  },
+  "melee: 9: + high/low slash and thrust": {
+   "gyro": {
+    "moves": 180,
+    "correct": 88,
+    "missed": 92,
+    "extra": 47,
+    "waited": 0,
+    "decisions": 203,
+    "correct_pct": 48.9,
+    "waited_for_camera_pct": 0.0
+   },
+   "fused": {
+    "moves": 180,
+    "correct": 179,
+    "missed": 1,
+    "extra": 1,
+    "waited": 140,
+    "decisions": 203,
+    "correct_pct": 99.4,
+    "waited_for_camera_pct": 69.0
+   },
+   "camera_blocked": {
+    "moves": 180,
+    "correct": 61,
+    "missed": 119,
+    "extra": 0,
+    "waited": 146,
+    "decisions": 205,
+    "correct_pct": 33.9,
+    "waited_for_camera_pct": 71.2
+   }
+  },
+  "melee: 12: + cross chop, lob, jab": {
+   "gyro": {
+    "moves": 180,
+    "correct": 75,
+    "missed": 105,
+    "extra": 48,
+    "waited": 0,
+    "decisions": 203,
+    "correct_pct": 41.7,
+    "waited_for_camera_pct": 0.0
+   },
+   "fused": {
+    "moves": 180,
+    "correct": 144,
+    "missed": 36,
+    "extra": 12,
+    "waited": 175,
+    "decisions": 202,
+    "correct_pct": 80.0,
+    "waited_for_camera_pct": 86.6
+   },
+   "camera_blocked": {
+    "moves": 180,
+    "correct": 28,
+    "missed": 152,
+    "extra": 0,
+    "waited": 166,
+    "decisions": 193,
+    "correct_pct": 15.6,
+    "waited_for_camera_pct": 86.0
+   }
+  },
+  "bow: 5 distinct (the starter set)": {
+   "gyro": {
+    "moves": 180,
+    "correct": 177,
+    "missed": 3,
+    "extra": 0,
+    "waited": 0,
+    "decisions": 204,
+    "correct_pct": 98.3,
+    "waited_for_camera_pct": 0.0
+   },
+   "fused": {
+    "moves": 180,
+    "correct": 180,
+    "missed": 0,
+    "extra": 0,
+    "waited": 30,
+    "decisions": 203,
+    "correct_pct": 100.0,
+    "waited_for_camera_pct": 14.8
+   },
+   "camera_blocked": {
+    "moves": 180,
+    "correct": 178,
+    "missed": 2,
+    "extra": 0,
+    "waited": 19,
+    "decisions": 195,
+    "correct_pct": 98.9,
+    "waited_for_camera_pct": 9.7
+   }
+  },
+  "bow: 8: + high/low punch, wide yank": {
+   "gyro": {
+    "moves": 180,
+    "correct": 97,
+    "missed": 83,
+    "extra": 31,
+    "waited": 0,
+    "decisions": 197,
+    "correct_pct": 53.9,
+    "waited_for_camera_pct": 0.0
+   },
+   "fused": {
+    "moves": 180,
+    "correct": 177,
+    "missed": 3,
+    "extra": 0,
+    "waited": 127,
+    "decisions": 197,
+    "correct_pct": 98.3,
+    "waited_for_camera_pct": 64.5
+   },
+   "camera_blocked": {
+    "moves": 180,
+    "correct": 67,
+    "missed": 113,
+    "extra": 0,
+    "waited": 135,
+    "decisions": 202,
+    "correct_pct": 37.2,
+    "waited_for_camera_pct": 66.8
+   }
+  }
+ },
+ "camera": {
+  "normal webcam (30 fps)": {
+   "moves": 180,
+   "correct": 179,
+   "missed": 1,
+   "extra": 1,
+   "waited": 140,
+   "decisions": 203,
+   "correct_pct": 99.4,
+   "waited_for_camera_pct": 69.0
+  },
+  "15 fps webcam": {
+   "moves": 180,
+   "correct": 179,
+   "missed": 1,
+   "extra": 0,
+   "waited": 138,
+   "decisions": 202,
+   "correct_pct": 99.4,
+   "waited_for_camera_pct": 68.3
+  },
+  "twice the blur and lost frames": {
+   "moves": 180,
+   "correct": 179,
+   "missed": 1,
+   "extra": 1,
+   "waited": 140,
+   "decisions": 203,
+   "correct_pct": 99.4,
+   "waited_for_camera_pct": 69.0
+  },
+  "camera delay misjudged by 80 ms": {
+   "moves": 180,
+   "correct": 179,
+   "missed": 1,
+   "extra": 1,
+   "waited": 140,
+   "decisions": 203,
+   "correct_pct": 99.4,
+   "waited_for_camera_pct": 69.0
+  },
+  "turned 30 degrees from the camera": {
+   "moves": 180,
+   "correct": 145,
+   "missed": 35,
+   "extra": 3,
+   "waited": 142,
+   "decisions": 207,
+   "correct_pct": 80.6,
+   "waited_for_camera_pct": 68.6
+  },
+  "camera blocked (falls back to gyro)": {
+   "moves": 180,
+   "correct": 61,
+   "missed": 119,
+   "extra": 0,
+   "waited": 146,
+   "decisions": 205,
+   "correct_pct": 33.9,
+   "waited_for_camera_pct": 71.2
+  },
+  "sloppier player (1.6x variation)": {
+   "moves": 180,
+   "correct": 166,
+   "missed": 14,
+   "extra": 0,
+   "waited": 147,
+   "decisions": 208,
+   "correct_pct": 92.2,
+   "waited_for_camera_pct": 70.7
+  }
+ },
+ "auto_align": {
+  "no correction": {
+   "first_40_correct_pct": 65.8,
+   "last_40_correct_pct": 62.5,
+   "mount_error_left_deg": 35.0
+  },
+  "auto-align, gyro decides": {
+   "first_40_correct_pct": 69.2,
+   "last_40_correct_pct": 81.7,
+   "mount_error_left_deg": 15.9
+  },
+  "auto-align, camera + gyro decide": {
+   "first_40_correct_pct": 98.3,
+   "last_40_correct_pct": 98.3,
+   "mount_error_left_deg": 2.7
+  },
+  "no slip, auto-align on (should stay put)": {
+   "first_40_correct_pct": 100.0,
+   "last_40_correct_pct": 98.3,
+   "mount_error_left_deg": 2.8
+  }
+ },
+ "bias": {
+  "gyro-only still tracker": {
+   "offset_error_at_end_deg_s": 34.1,
+   "correct_pct": 87.5,
+   "true_offset_deg_s": 19.9
+  },
+  "+ camera stillness": {
+   "offset_error_at_end_deg_s": 2.8,
+   "correct_pct": 100.0,
+   "true_offset_deg_s": 19.9
+  }
+ }
+}

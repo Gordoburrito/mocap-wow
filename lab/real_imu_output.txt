@@ -1,0 +1,11 @@
+4 cardinal swipes                  accuracy  98.3%  wrong  0.0%  rejected  1.7%   (1124 tests)  []
+8 swipes (with diagonals)          accuracy  89.0%  wrong  0.4%  rejected 10.6%   (2252 tests)  [('swipe_downleft -> swipe_left', 2), ('swipe_right -> swipe_upright', 2), ('swipe_downright -> swipe_down', 1)]
+stick set: 4 swipes + 2 twists     accuracy  98.4%  wrong  0.0%  rejected  1.6%   (1688 tests)  []
+4 pokes (thrust and back)          accuracy  99.6%  wrong  0.0%  rejected  0.4%   (1130 tests)  []
+4 circles                          accuracy  95.4%  wrong  0.0%  rejected  4.6%   (1124 tests)  []
+all 20                             accuracy  92.5%  wrong  0.2%  rejected  7.3%   (5630 tests)  [('swipe_downleft -> swipe_left', 2), ('swipe_right -> swipe_upright', 2), ('swipe_downright -> swipe_down', 1)]
+open set (14 gestures never recorded) accuracy  98.4%  unknown moves wrongly fired: 10.4% of 7862
+stick set with 1 take(s)           accuracy  90.5%  wrong  0.0%  rejected  9.5%
+stick set with 3 take(s)           accuracy  97.5%  wrong  0.0%  rejected  2.5%
+stick set with 5 take(s)           accuracy  98.4%  wrong  0.0%  rejected  1.6%
+all 20, gyro only                  accuracy  92.6%  wrong  0.3%  rejected  7.1%
