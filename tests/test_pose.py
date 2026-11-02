@@ -64,3 +64,22 @@ def test_brief_flicker_does_not_fire():
         events += trig.update("bow", i / 30, hold)
     events += trig.update(None, 5 / 30, hold)
     assert events == []
+
+
+def test_a_scoped_pose_only_looks_at_its_body_part():
+    """'Left arm up', judged on the left arm: fires whatever the right arm does; the whole-body
+    version of the same recording doesn't when the right arm is somewhere else."""
+    rng = np.random.default_rng(12)
+
+    def left_up(right_up):
+        lm = pose("arms_up" if right_up else "neutral", rng)
+        up = pose("arms_up", rng)
+        lm[[13, 15, 19]] = up[[13, 15, 19]]          # left elbow, wrist, hand raised
+        return lm
+
+    recorded = [{"lm": left_up(False).tolist(), "aspect": ASPECT} for _ in range(20)]
+    for scope, expect in (("left_arm", "left"), ("whole", None)):
+        clf = PoseClassifier()
+        clf.set_data([("left", recorded, None, scope)], samples("neutral", 40, 3))
+        assert clf.classify(features(left_up(False), ASPECT))[0] == "left"
+        assert clf.classify(features(left_up(True), ASPECT))[0] == expect

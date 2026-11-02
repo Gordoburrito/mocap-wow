@@ -1,0 +1,17 @@
+segmenter: {'clips': 861, 'one_piece_pct': np.float64(76.7), 'split_pct': np.float64(20.7), 'missed_pct': np.float64(2.7)}
+  all 27                 90.6% right, 0.2% wrong, 9.2% missed   (live segmenter: 89.7% right, 0.3% wrong)
+  21 arm actions         94.0% right, 0.1% wrong, 5.8% missed   (live segmenter: 93.1% right, 0.1% wrong)
+  6 leg and body moves   80.0% right, 0.5% wrong, 19.5% missed   (live segmenter: 79.5% right, 0.5% wrong)
+  moves never recorded that fired something: 4.9 %
+Moves vs accuracy, all 27 (random sets):
+   4 moves: 92.9% right, 0.1% wrong
+   6 moves: 90.8% right, 0.1% wrong
+   8 moves: 94.3% right, 0.0% wrong
+  10 moves: 92.6% right, 0.1% wrong
+  12 moves: 94.0% right, 0.1% wrong
+  15 moves: 92.2% right, 0.2% wrong
+  18 moves: 91.2% right, 0.1% wrong
+  21 moves: 91.4% right, 0.1% wrong
+  27 moves: 90.6% right, 0.2% wrong
+  largest set at >=95% right, <=1% wrong: 23 moves: ['swipe left', 'swipe right', 'wave', 'clap', 'throw', 'arm cross', 'basketball shoot', 'draw X', 'draw circle (cw)', 'draw circle (ccw)', 'draw triangle', 'bowling', 'boxing', 'baseball swing', 'tennis swing', 'tennis serve', 'push', 'knock', 'pickup and throw', 'jog in place', 'sit to stand', 'lunge', 'squat']
+wrote camera_moves_results.json

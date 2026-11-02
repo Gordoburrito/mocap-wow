@@ -121,6 +121,52 @@ class SimCamera(threading.Thread):
         self.until = 0.0
         self.rng = np.random.default_rng(3)
 
+    # Body moves for the simulated webcam: what moves, how far (metres), how long (seconds).
+    BODY_MOVES = {
+        "kick": ({"right_foot": 0.55}, 0.7),
+        "stomp": ({"left_foot": 0.35}, 0.6),
+        "duck": ({"crouch": 0.35}, 0.8),
+        "shove": ({"hands": (0.0, 0.0, 0.45)}, 0.6),
+        "wave": ({"wave": 0.3}, 1.2),
+    }
+
+    def perform_body(self, name, size=1.0):
+        """Play a body move on the simulated webcam (the weapons don't move)."""
+        if name not in self.BODY_MOVES:
+            return None
+        spec, seconds = self.BODY_MOVES[name]
+        seconds *= float(self.rng.uniform(0.85, 1.15))
+        self.body_anim = (name, time.monotonic(), seconds, size * float(self.rng.uniform(0.85, 1.15)))
+        return seconds
+
+    def _anim(self, now):
+        """Offsets for the body move that's playing, if any: out and back, smoothly."""
+        anim = getattr(self, "body_anim", None)
+        if anim is None:
+            return {}
+        name, t0, seconds, size = anim
+        f = (now - t0) / seconds
+        if f < 0:
+            return {}                      # not started yet (the camera shows the past)
+        if f >= 1:
+            self.body_anim = None
+            return {}
+        spec = self.BODY_MOVES[name][0]
+        s = np.sin(np.pi * f) ** 2 * size
+        out = {}
+        if "right_foot" in spec:
+            out["feet"] = {"right": spec["right_foot"] * s}
+        if "left_foot" in spec:
+            out["feet"] = {"left": spec["left_foot"] * s}
+        if "crouch" in spec:
+            out["crouch"] = spec["crouch"] * s
+            out["hands"] = np.array([0.0, 0.0, -spec["crouch"] * s])    # the hands go down with you
+        if "hands" in spec:
+            out["hands"] = np.array(spec["hands"]) * s
+        if "wave" in spec:
+            out["hands"] = np.array([0.0, spec["wave"] * np.sin(4 * np.pi * f) * size, 0.25 * s])
+        return out
+
     def show(self, pose, seconds=2.0):
         if pose in self.library:
             self.current, self.until = pose, time.monotonic() + seconds
@@ -130,11 +176,19 @@ class SimCamera(threading.Thread):
     def _body(self, now):
         cam = self.webcam
         hands = self.rig.hands_at(now - cam.lag) if self.rig is not None else {}
+        anim = self._anim(now - cam.lag)
         world = {}
         for role in ("melee", "bow"):
-            p = GUARD[role] + np.asarray(hands.get(role, np.zeros(3)))
-            world[SIDE_OF[role]] = p + self.rng.normal(0, cam.jitter, 3)
-        pts = skeleton(world.get("left"), world.get("right"), cam.yaw_deg)
+            p = GUARD[role] + np.asarray(hands.get(role, np.zeros(3))) + anim.get("hands", 0.0)
+            world[SIDE_OF[role]] = p
+        pts = skeleton(world.get("left"), world.get("right"), cam.yaw_deg, anim.get("crouch", 0.0),
+                       anim.get("feet"))
+        # Tracker jitter drifts rather than jumping frame to frame (as MediaPipe's does).
+        noise = getattr(self, "_noise", None)
+        if noise is None or noise.shape != pts.shape:
+            noise = np.zeros(pts.shape)
+        self._noise = 0.85 * noise + self.rng.normal(0, cam.jitter * 0.5, pts.shape)
+        pts = pts + self._noise
         uv, _ = project(pts, aspect=self.aspect)
         lm = np.zeros((33, 4))
         lm[:, :2] = uv

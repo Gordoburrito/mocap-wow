@@ -158,3 +158,12 @@ def test_no_metrics_folder_means_nothing_written(rig, tmp_path):
     rig.record((0, 0, 0), "Digit1", "Slash")
     assert not rig.engine.metrics.enabled
     assert not (tmp_path / "metrics").exists()
+
+
+def test_weapon_only_scope_ignores_the_camera(rig):
+    mid = rig.record((0, 0, 0), "Digit1", "Slash")
+    high = rig.record(HIGH, "Digit2", "High slash")
+    assert mid in rig.engine.swing_clf.fused and high in rig.engine.swing_clf.fused
+    rig.engine.handle({"op": "update_gesture", "id": high, "fields": {"scope": "weapon"}})
+    assert high not in rig.engine.swing_clf.fused
+    assert rig.engine.public_gesture(rig.engine.gesture(high))["scope"] == "weapon"

@@ -54,10 +54,22 @@ def main():
             "wrist_label": fr.get("sensor_wrist_label"),
         }
 
+    cm = load("camera_moves_results.json")
+    if cm:
+        out["camera_only"] = {
+            "source": "UTD-MHAD: 8 people x 27 actions x 4 trials, RGB video only (MediaPipe)",
+            "rows": [{"label": k, "correct": cm[k]["cut"]["correct_pct"], "wrong": cm[k]["cut"]["wrong_pct"],
+                      "rejected": cm[k]["cut"]["rejected_pct"], "live": cm[k]["live"]["correct_pct"]}
+                     for k in ("21 arm actions", "6 leg and body moves", "all 27") if k in cm],
+            "largest": cm.get("largest_set", {}).get("count"),
+            "open_set_false_fire": cm.get("open_set_false_fire_pct"),
+        }
+
     fs = load("fusion_sim_results.json")
     if fs:
         out["sim_fusion"] = {
-            "sets": [{"label": k, "gyro": v["gyro"], "fused": v["fused"]} for k, v in fs.get("sets", {}).items()],
+            "sets": [{"label": k, "gyro": v["gyro"], "fused": v["fused"], "camera_only": v.get("camera_only")}
+                     for k, v in fs.get("sets", {}).items()],
             "camera": [{"label": k, **v} for k, v in fs.get("camera", {}).items()],
             "auto_align": fs.get("auto_align"), "bias": fs.get("bias"),
         }

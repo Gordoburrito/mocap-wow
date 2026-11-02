@@ -10,4 +10,4 @@ try:
 except Exception:          # no SDL installed: everything except the Joy-Cons still works
     pass
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

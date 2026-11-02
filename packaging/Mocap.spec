@@ -25,11 +25,11 @@ exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Mocap", console=False
 coll = COLLECT(exe, a.binaries, a.datas, name="Mocap")
 app = BUNDLE(
     coll, name="Mocap.app", icon=os.path.join(SPECPATH, "Mocap.icns"),
-    bundle_identifier="io.github.mocap-wow.mocap", version="0.2.0",
+    bundle_identifier="io.github.mocap-wow.mocap", version="0.3.0",
     info_plist={
         "CFBundleName": "Mocap",
         "CFBundleDisplayName": "Mocap",
-        "CFBundleShortVersionString": "0.2.0",
+        "CFBundleShortVersionString": "0.3.0",
         "LSMinimumSystemVersion": "13.0",
         "LSApplicationCategoryType": "public.app-category.games",
         "NSHighResolutionCapable": True,

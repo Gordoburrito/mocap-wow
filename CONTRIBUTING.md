@@ -12,7 +12,8 @@ webcam poses and Joy-Con weapon motions into key presses.
 
 `--sim` gives you two simulated Joy-Cons, and `--sim-camera` a simulated webcam that sees
 the simulated body holding them. Drive them with `POST /api/sim`, e.g.
-`{"role": "melee", "gesture": "slash_left", "offset": [0, 0, 0.4]}`. Simulated sessions use a
+`{"role": "melee", "gesture": "slash_left", "offset": [0, 0, 0.4]}`, or a body move for the
+webcam with `{"body": "kick"}` (kick, stomp, duck, shove, wave). Simulated sessions use a
 throwaway data folder, so they never touch anyone's real recordings.
 
 ## Ground rules
@@ -31,6 +32,7 @@ throwaway data folder, so they never touch anyone's real recordings.
 | `mocap/engine.py` | the hub: inputs in, one key out; capture; calibration wizard; accuracy test |
 | `mocap/motion.py` | weapon motion recognition (DTW), calibration, fused camera + gyro decisions |
 | `mocap/fusion.py` | camera track, hand paths, stillness, hand and camera-delay finding |
+| `mocap/camera_moves.py` | body moves from the webcam alone: segmenter, recognizer, joining paused pieces |
 | `mocap/calibration.py` | gyro bias, mount alignment, camera-gated bias, auto mount correction |
 | `mocap/pose.py`, `body.py` | poses, jog, hop |
 | `mocap/metrics.py` | play log and accuracy test |

@@ -32,9 +32,11 @@ def _ik(shoulder, hand, outward):
     return shoulder + a * e + h * p
 
 
-def skeleton(left_hand=None, right_hand=None, yaw_deg=0.0, crouch=0.0):
-    """33 MediaPipe landmarks in world coordinates (metres). Hands default to hanging down."""
+def skeleton(left_hand=None, right_hand=None, yaw_deg=0.0, crouch=0.0, feet=None):
+    """33 MediaPipe landmarks in world coordinates (metres). Hands default to hanging down.
+    feet: {"left"/"right": metres a foot is lifted} for kicks and stomps."""
     z = -crouch
+    feet = feet or {}
     pts = np.zeros((33, 3))
     ls, rs = np.array([0, SHOULDER_Y, SHOULDER_Z + z]), np.array([0, -SHOULDER_Y, SHOULDER_Z + z])
     lh = np.array(left_hand) if left_hand is not None else np.array([0.02, 0.24, 0.80 + z])
@@ -52,14 +54,15 @@ def skeleton(left_hand=None, right_hand=None, yaw_deg=0.0, crouch=0.0):
         for k, i in enumerate((17, 19, 21) if side == 0 else (18, 20, 22)):
             pts[i] = wrist + fwd * (0.07 - 0.015 * k)
     pts[23], pts[24] = [0, HIP_Y, HIP_Z + z], [0, -HIP_Y, HIP_Z + z]
-    for i, y in ((25, 0.11), (26, -0.11)):
-        pts[i] = [0.04, y, 0.52 + z * 0.5]
-    for i, y in ((27, 0.11), (28, -0.11)):
-        pts[i] = [0, y, 0.08]
-    for i, y in ((29, 0.11), (30, -0.11)):
-        pts[i] = [-0.04, y, 0.03]
-    for i, y in ((31, 0.12), (32, -0.12)):
-        pts[i] = [0.14, y, 0.02]
+    lift = {"left": feet.get("left", 0.0), "right": feet.get("right", 0.0)}
+    for i, y, side in ((25, 0.11, "left"), (26, -0.11, "right")):
+        pts[i] = [0.04 + 0.3 * lift[side], y, 0.52 + z * 0.5 + 0.6 * lift[side]]
+    for i, y, side in ((27, 0.11, "left"), (28, -0.11, "right")):
+        pts[i] = [0.5 * lift[side], y, 0.08 + lift[side]]
+    for i, y, side in ((29, 0.11, "left"), (30, -0.11, "right")):
+        pts[i] = [-0.04 + 0.5 * lift[side], y, 0.03 + lift[side]]
+    for i, y, side in ((31, 0.12, "left"), (32, -0.12, "right")):
+        pts[i] = [0.14 + 0.5 * lift[side], y, 0.02 + lift[side]]
     if yaw_deg:
         a = np.radians(yaw_deg)
         r = np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
@@ -98,6 +101,9 @@ class Webcam:
         start = t[0] + rng.uniform(0, 1 / self.fps)
         times = np.arange(start, t[-1], 1 / self.fps)
         state = {}
+        # Tracker jitter drifts from frame to frame (AR(1)) with the same overall size.
+        drift = {"left": np.zeros(3), "right": np.zeros(3), "body": np.zeros((33, 3))}
+        keep, kick = 0.85, np.sqrt(1 - 0.85 ** 2)
         for ft in times:
             if self.blocked:
                 out.append((ft + t_offset + self.lag, None, self.aspect))
@@ -110,15 +116,17 @@ class Webcam:
                 p = np.array([np.interp(ft, t, h[:, j]) for j in range(3)])
                 p_prev = np.array([np.interp(ft - 1 / self.fps, t, h[:, j]) for j in range(3)])
                 sp = float(np.linalg.norm(p - p_prev) * self.fps)
-                sigma = self.jitter + self.blur * sp
-                noisy = p + rng.normal(0, sigma, 3)
+                drift[side] = keep * drift[side] + kick * rng.normal(0, self.jitter, 3)
+                noisy = p + drift[side] + rng.normal(0, self.blur * sp + 1e-9, 3)
                 prev = state.get(side)
                 if prev is not None:
                     noisy = self.smoothing * prev + (1 - self.smoothing) * noisy
                 state[side] = noisy
                 pos[side], speed[side] = noisy, sp
             pts = skeleton(pos.get("left"), pos.get("right"), self.yaw_deg)
-            pts[[11, 12, 23, 24]] += rng.normal(0, self.jitter * 0.5, (4, 3))
+            drift["body"] = keep * drift["body"] + kick * rng.normal(0, self.jitter * 0.5, (33, 3))
+            body = [i for i in range(33) if i not in (13, 14, 15, 16)]
+            pts[body] += drift["body"][body]
             uv, _ = project(pts, aspect=self.aspect)
             lm = np.zeros((33, 4))
             lm[:, :2] = uv

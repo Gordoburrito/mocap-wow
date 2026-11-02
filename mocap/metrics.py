@@ -30,6 +30,7 @@ class Metrics:
         self.fires = Counter()              # gid -> keys sent
         self.held = Counter()               # why a recognized gesture didn't send a key
         self.fusion = Counter()             # how the camera changed motion decisions
+        self.body_moves = Counter()         # webcam-only move decisions by outcome
         self.corrections = Counter()        # loosen / ignore / wrong
         self.calibration = Counter()        # camera_bias / auto_align steps
         self.latency = deque(maxlen=500)    # ms from motion end to decision
@@ -51,16 +52,20 @@ class Metrics:
         except OSError:
             self.enabled = False            # a read-only disk shouldn't stop you playing
 
-    def motion(self, role, result, outcome, latency_ms=None, waited_ms=None, gesture_name=None):
-        """outcome: fired / held / rejected / near / skipped (mirror) / drill."""
+    def motion(self, role, result, outcome, latency_ms=None, waited_ms=None, gesture_name=None,
+               kind="motion"):
+        """outcome: fired / held / rejected / near / skipped (mirror) / drill.
+        kind: "motion" (a weapon) or "move" (a body move from the webcam alone)."""
         self.decisions[outcome] += 1
         if outcome in ("rejected", "near", "held"):
             self.reasons[result.get("reason") or outcome] += 1
-        if result.get("fused"):
+        if kind == "move":
+            self.body_moves[outcome] += 1
+        elif result.get("fused"):
             gyro, fused = result.get("gyro_gid"), result.get("gid")
-            kind = ("agreed" if gyro == fused else "rescued" if gyro is None
-                    else "vetoed" if fused is None else "corrected")
-            self.fusion[kind] += 1
+            effect = ("agreed" if gyro == fused else "rescued" if gyro is None
+                      else "vetoed" if fused is None else "corrected")
+            self.fusion[effect] += 1
         elif waited_ms is not None:
             self.fusion["no_view"] += 1
         else:
@@ -69,7 +74,7 @@ class Metrics:
             self.latency.append(latency_ms)
         if waited_ms is not None:
             self.waits.append(waited_ms)
-        rec = {"t": self.clock(), "k": "motion", "role": role, "o": outcome,
+        rec = {"t": self.clock(), "k": kind, "role": role, "o": outcome,
                "g": result.get("gid") or result.get("best"), "n": gesture_name,
                "r": result.get("reason"), "fused": bool(result.get("fused")),
                "gyro": result.get("gyro_gid"), "lat": latency_ms, "wait": waited_ms}
@@ -114,7 +119,8 @@ class Metrics:
             "since": self.started, "motions": decided, "decisions": dict(self.decisions),
             "reasons": dict(self.reasons.most_common(8)), "held": dict(self.held),
             "fires": {self.names.get(g, g): n for g, n in self.fires.most_common()},
-            "fusion": dict(self.fusion), "corrections": dict(self.corrections),
+            "fusion": dict(self.fusion), "body_moves": dict(self.body_moves),
+            "corrections": dict(self.corrections),
             "calibration": dict(self.calibration),
             "latency_ms": {"median": pct(lat, 0.5), "p90": pct(lat, 0.9)},
             "camera_wait_ms": {"median": pct(waits, 0.5), "p90": pct(waits, 0.9),
@@ -139,7 +145,7 @@ class Metrics:
                             r = json.loads(line)
                         except ValueError:
                             continue
-                        if r.get("k") == "motion":
+                        if r.get("k") in ("motion", "move"):
                             day["motions"] += 1
                             o = r.get("o")
                             if o in ("fired", "near", "rejected", "held"):

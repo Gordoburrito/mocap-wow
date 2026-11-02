@@ -6,6 +6,8 @@ one key press (or one held key) per recognized gesture.
 - After a motion fires, that weapon is locked out briefly so the return stroke can't fire.
 - Tapping the weapon shafts together opens quick capture; nothing fires while capturing.
 - By default nothing is sent unless WoW is the front window.
+- Body moves (a kick, a duck, a two-handed shove) come from the webcam alone
+  (camera_moves.py); one that happens while a weapon motion fires is left to the weapon.
 - When the webcam can see your weapon hand, motions are matched on the gyro AND the hand's
   path (fusion.py): the gyro decides alone when it's sure, otherwise the engine waits a
   moment for the camera. The camera also keeps the gyro calibrated (bias when you're still,
@@ -21,6 +23,7 @@ import numpy as np
 
 from . import profile as profiles
 from .body import HopDetector, JogDetector
+from . import camera_moves
 from .calibration import DeviceCalibration, StillCapture, pose_quality, trigger_from_noise
 from .fusion import CameraTrack, ClockMap, HandFinder, LagFinder
 from .metrics import Drill, Metrics
@@ -28,10 +31,14 @@ from .keys import binding_label, frontmost_app_name, valid_binding
 from .motion import (DEFAULT_START, MIRROR_WINDOW, ClashDetector, GravityTracker, Segmenter,
                      SwingClassifier, held_back, peak, prepare)
 from .pose import DEFAULT_THRESHOLD as POSE_DEFAULT, PoseClassifier, PoseTrigger, distances, features
+from .pose import SCOPES as POSE_SCOPES
 
 MAX_POSE_SAMPLES = 240
 EDITABLE = {"name", "key", "mode", "action", "sensitivity", "hold_ms", "enabled", "casts",
-            "tooltip", "source"}
+            "tooltip", "source", "scope"}
+MOVE_KEYFRAMES = 12          # skeleton frames kept per body-move take, to show what you recorded
+TRAIL_JOINTS = {"left_arm": [15], "right_arm": [16], "arms": [15, 16], "left_leg": [27],
+                "right_leg": [28], "legs": [27, 28], "body": [0]}
 CAPTURE_READY_S = 1.2           # ignore everything right after a capture starts (the clash itself)
 CAPTURE_TIMEOUT_S = 40.0
 POSE_CAPTURE_S = 2.0
@@ -110,6 +117,11 @@ class Engine:
         self.motion_block_until = -np.inf       # host time; set by a clash
         self.overlay_height = None
         self.track = CameraTrack()
+        self.move_seg = camera_moves.MoveSegmenter()    # whole body: capture
+        self.move_scopes = {}                           # scope -> MoveScope (live recognition)
+        self.move_fires = deque(maxlen=12)              # (start, end, body points) of moves that fired
+        self.move_frames = deque(maxlen=240)            # recent landmarks, for take keyframes
+        self.weapon_spans = deque(maxlen=20)            # (start, end, hand) of weapon motions that fired
         self.lag_finder = LagFinder()
         self.metrics = Metrics(metrics_dir, enabled=self.profile["settings"].get("metrics", True))
         self.drill = None
@@ -149,15 +161,30 @@ class Engine:
     def rebuild(self):
         with self.lock:
             enabled = [g for g in self.profile["gestures"] if g.get("enabled", True)]
-            poses = [(g["id"], g["samples"], None)
+            poses = [(g["id"], g["samples"], None, g.get("scope") if g.get("scope") in POSE_SCOPES else "whole")
                      for g in enabled if g["kind"] == "pose" and g.get("samples")]
             self.pose_clf.set_data(poses, self.profile["neutral"],
                                    {g["id"]: g.get("sensitivity", 1.0) for g in enabled})
             motions = [(g["id"], g["source"], g["templates"], None)
                        for g in enabled if g["kind"] == "motion" and g.get("templates")]
             sens = {g["id"]: g.get("sensitivity", 1.0) for g in enabled}
-            paths = {g["id"]: g.get("paths") for g in enabled if g["kind"] == "motion"}
-            self.swing_clf.set_data(motions, self.profile.get("ignore", {}), sens, paths)
+            # "Weapon only" motions ignore the camera: no hand paths, judged on the gyro alone.
+            paths = {g["id"]: (None if g.get("scope") == "weapon" else g.get("paths"))
+                     for g in enabled if g["kind"] == "motion"}
+            ignore = self.profile.get("ignore", {})
+            self.swing_clf.set_data(motions, {r: v for r, v in ignore.items() if r != "webcam"}, sens, paths)
+            start = camera_moves.calibrate_start(self.profile["neutral"]) if self.profile["neutral"] \
+                else camera_moves.START
+            self.move_seg.start = start
+            by_scope = {}
+            for g in enabled:
+                if g["kind"] == "move" and g.get("templates"):
+                    by_scope.setdefault(move_scope(g), []).append((g["id"], g["templates"]))
+            self.move_scopes = {}
+            for scope, moves in by_scope.items():
+                sc = MoveScope(scope, start)
+                sc.clf.set_data(moves, ignore.get("webcam", []), sens)
+                self.move_scopes[scope] = sc
             self.jog.reset()
             self._public_cache = {}
 
@@ -194,6 +221,22 @@ class Engine:
             out["take_match"] = [round(float(np.clip(1 - dtw_batch(s, np.delete(bank, i, 0)).min()
                                                      / (2 * thr), 0, 1)), 2) if len(bank) > 1 else 1.0
                                  for i, s in enumerate(seqs)]
+        elif g["kind"] == "move" and g.get("templates"):
+            seqs = np.stack([camera_moves.prepare(t) for t in g["templates"]])
+            mean = seqs.mean(axis=0).reshape(len(seqs[0]), -1, 2)
+            travel = np.linalg.norm(np.diff(mean, axis=0), axis=2).sum(axis=0)
+            scope = move_scope(g)
+            out["move"] = {"points": np.round(mean, 3).tolist(),
+                           "active": [int(i) for i in np.argsort(-travel)[:3] if travel[i] > 0.15]}
+            out["takes"] = [np.round(camera_moves._speeds(t), 2).tolist() for t in g["templates"]]
+            skels = g.get("skeletons") or []
+            if any(skels):
+                # Draw what you actually recorded: the take closest to all the others.
+                d = [float(np.mean([np.abs(a - b).mean() for b in seqs])) for a in seqs]
+                order = [i for i in np.argsort(d) if i < len(skels) and skels[i]]
+                if order:
+                    out["real"] = move_keyframes(skels[order[0]], scope)
+                out["take_real"] = [move_keyframes(sk, scope, compact=True) if sk else None for sk in skels]
         elif g["kind"] == "pose" and g.get("samples"):
             mid = g["samples"][len(g["samples"]) // 2]
             out["skeleton"] = [[round(p[0], 3), round(p[1], 3), round(p[3], 2)] for p in mid["lm"]]
@@ -206,12 +249,15 @@ class Engine:
             return False
         if g["kind"] == "pose":
             return bool(g.get("samples"))
-        if g["kind"] == "motion":
+        if g["kind"] in ("motion", "move"):
             return bool(g.get("templates"))
         return True
 
     def public_gesture(self, g):
-        out = {k: v for k, v in g.items() if k not in ("samples", "templates", "paths")}
+        out = {k: v for k, v in g.items() if k not in ("samples", "templates", "paths", "skeletons")}
+        out["scope"] = g.get("scope") or ("auto" if g["kind"] == "move" else "whole")
+        if g["kind"] == "move":
+            out["scope_effective"] = move_scope(g)
         if g["kind"] == "motion":
             out["camera_takes"] = sum(1 for p in g.get("paths") or [] if p is not None)
             out["uses_camera"] = g["id"] in self.swing_clf.fused
@@ -223,6 +269,14 @@ class Engine:
         out["stats"] = self.stats.get(g["id"], {"fired": 0, "near": 0})
         cal = self.swing_clf.calibration.get(g["id"])
         pcal = self.pose_clf.calibration.get(g["id"])
+        mcal = next((sc.clf.calibration[g["id"]] for sc in self.move_scopes.values()
+                     if g["id"] in sc.clf.calibration), None)
+        if mcal:
+            nearest = mcal.get("nearest_gid")
+            other = self.gesture(nearest) if nearest and nearest.startswith("g") else None
+            out["calibration"] = {"threshold": round(mcal["threshold"], 3), "spread": round(mcal["spread"], 3),
+                                  "margin": round(mcal["margin"], 2) if mcal.get("margin") else None,
+                                  "nearest": other["name"] if other else nearest}
         if pcal and pcal.get("nearest"):
             nearest = pcal["nearest_gid"]
             other = self.gesture(nearest) if nearest and nearest.startswith("g") else None
@@ -399,12 +453,122 @@ class Engine:
                 self._pose_triggers(best, t)
                 if self.drill is None:
                     self._body_triggers(landmarks, aspect, t)
+            self._body_moves(landmarks, aspect, t)
         lm = None
         if landmarks is not None:
             lm = np.round(np.asarray(landmarks)[:, [0, 1, 3]], 3).tolist()
         self.emit({"type": "pose", "lm": lm, "best": best,
                    "matches": {k: round(v, 3) for k, v in matches.items()},
                    "latched": self.pose_trigger.latched, "jogging": self.jog.active})
+
+    # ----------------------------------------------------------------- body moves (webcam only)
+
+    def _body_moves(self, landmarks, aspect, t):
+        if self.calib is not None or self.neutral_rec is not None:
+            return
+        if landmarks is not None:
+            lm = np.asarray(landmarks, dtype=float)
+            self.move_frames.append((t, np.round(lm[:, [0, 1, 3]], 3), round(float(aspect), 4)))
+        seg = self.move_seg.feed(t, landmarks, aspect)
+        if self.capture is not None:
+            self._capture_move_tick(t)
+            if seg is not None:
+                self._capture_move(seg, t)
+            return
+        live = self.settings.get("body_moves", True) and not self.jog.active
+        for sc in self.move_scopes.values():
+            sc.joiner.expire(t)
+            piece = sc.seg.feed(t, landmarks, aspect)
+            if piece is not None and live:
+                self._decide_move(sc, piece)
+
+    def _decide_move(self, sc, seg):
+        """A body move cut out on one scope's body parts (whole body, right leg...)."""
+        lockout = self.settings["lockout_ms"] / 1000.0
+        for f0, f1, pts in self.move_fires:
+            if pts & sc.points and seg[0, 0] < f1 + lockout and seg[-1, 0] > f0 - 0.1:
+                return      # the way back from a move, or the same move seen by another scope
+        lag = self.track.lag
+        sides = camera_moves.SCOPE_SIDES[sc.name]
+        if any(side in sides and s0 < seg[-1, 0] - lag + 0.1 and s1 > seg[0, 0] - lag - 0.1
+               for s0, s1, side in self.weapon_spans):
+            return          # that hand's weapon motion fired during it: that's what you meant
+        result, used = sc.joiner.offer(seg, sc.clf.classify)
+        latency = round((self.clock() - used[-1, 0]) * 1000 + sc.seg.quiet_s * 1000, 1)
+        gid = result["gid"]
+        until, blocked, blocker = sc.block
+        if gid in blocked and used[0, 0] < until and result["matches"].get(gid, 0) < 0.75:
+            self._event(self.gesture(gid), "skipped", f"looked like the way back from {blocker}")
+            return
+        g = self.gesture(gid) if gid else None
+        if g is None:
+            held = camera_moves_held(result)
+            if held:
+                self.move_fires.append((used[0, 0], used[-1, 0], sc.points))
+            if result.get("near"):
+                ng = self.gesture(result["near"])
+                self._stat(ng["id"], "near")
+                self.near = {"gid": ng["id"], "role": "webcam", "segment": used,
+                             "match": result["matches"].get(ng["id"], 0), "t": time.time()}
+                self._event(ng, "near miss", f"match {self.near['match']:.2f} · not sent")
+                self.emit({"type": "near", **self._near_public()})
+                self.metrics.motion("webcam", result, "near", latency, None, ng["name"], kind="move")
+                if self.drill is not None:
+                    self.drill.observe(None, "webcam", "near miss: " + ng["name"])
+            else:
+                self.metrics.motion("webcam", result, "held" if held else "rejected", latency, None, kind="move")
+            return
+        self.move_fires.append((used[0, 0], used[-1, 0], sc.points))
+        sc.block = (used[-1, 0] + camera_moves.MIRROR_WINDOW, sc.clf.mirrors.get(gid, set()), g["name"])
+        self.metrics.motion("webcam", result, "drill" if self.drill else "fired", latency, None, g["name"], kind="move")
+        self.last_fire = {"gid": g["id"], "name": g["name"], "role": "webcam", "segment": used, "t": time.time()}
+        self._send(g, "tap", match=result["matches"].get(gid))
+
+    def _capture_move(self, seg, t):
+        """During capture: a body move with the weapons still. Pieces with short pauses between
+        them are one take; the take is kept once you've paused for a moment."""
+        c = self.capture
+        if c["phase"] != "perform" or self.clock() < c["ready_at"] or c["kind"] in ("pose", "motion"):
+            return
+        lag = self.track.lag
+        if any(s0 < seg[-1, 0] - lag + 0.1 and s1 > seg[0, 0] - lag - 0.1 for s0, s1, _ in c.get("weapon_spans", [])):
+            return
+        held = c.get("move_hold")
+        if held is not None and seg[0, 0] - held[-1, 0] <= camera_moves.JOIN_GAP:
+            c["move_hold"] = np.concatenate([held, seg])
+        else:
+            self._commit_move_take()
+            c["move_hold"] = seg
+
+    def _keyframes(self, t0, t1):
+        """The skeleton you actually recorded for a take: up to MOVE_KEYFRAMES frames."""
+        frames = [(t, lm, a) for t, lm, a in self.move_frames if t0 - 0.05 <= t <= t1 + 0.05]
+        if not frames:
+            return None
+        pick = np.linspace(0, len(frames) - 1, min(MOVE_KEYFRAMES, len(frames))).round().astype(int)
+        return {"aspect": frames[0][2], "frames": [frames[i][1].tolist() for i in pick]}
+
+    def _capture_move_tick(self, t):
+        c = self.capture
+        held = c.get("move_hold") if c else None
+        if held is not None and t - held[-1, 0] > camera_moves.JOIN_GAP:
+            self._commit_move_take()
+
+    def _commit_move_take(self):
+        c = self.capture
+        held, c["move_hold"] = c.get("move_hold"), None
+        if held is None or c["phase"] != "perform" or c["kind"] in ("pose", "motion"):
+            return
+        if c["kind"] is None:
+            # A move with no weapon motion and no pose held at the end of it: a body move.
+            c["kind"], c["source"] = "move", "webcam"
+        c["takes"].append(np.round(held, 4).tolist())
+        c.setdefault("skeletons", []).append(self._keyframes(held[0, 0], held[-1, 0]))
+        c["message"] = ""
+        if len(c["takes"]) >= c["target"]:
+            self._finish_perform()
+        else:
+            self.emit({"type": "capture", **self._capture_public()})
 
     def _pose_triggers(self, best, t):
         default_hold = self.settings["pose_hold_ms"]
@@ -606,6 +770,7 @@ class Engine:
             return
         dev.locked_until = segment[-1, 0] + self.settings["lockout_ms"] / 1000.0
         dev.mirror_block = (segment[-1, 0] + MIRROR_WINDOW, self.swing_clf.mirrors.get(g["id"], set()), g["name"])
+        self.weapon_spans.append((dev.clock.host(segment[0, 0]), dev.clock.host(segment[-1, 0]), dev.side))
         self.rumble(dev.name, 0.6 if self.armed else 0.25, 70)
         self.metrics.motion(dev.role, result, "drill" if self.drill else "fired", latency, waited_ms, g["name"])
         self._learn_alignment(dev, segment, result, g)
@@ -667,10 +832,12 @@ class Engine:
             "ready_in": round(max(0.0, c["ready_at"] - now), 2),
             "key": c["key"], "key_label": binding_label(c["key"]) if c["key"] else None,
             "conflict": self._key_conflict(c["key"]),
+            "auto_scope": c.get("auto_scope"),
             "pose_progress": round(min(1.0, (now - c["pose_since"]) / POSE_CAPTURE_S), 2)
             if c.get("pose_since") else 0.0,
             "traces": [np.round(np.linalg.norm(prepare(s)[0][:, :3], axis=1), 2).tolist()
-                       for s in c["takes"]] if c["kind"] == "motion" else [],
+                       for s in c["takes"]] if c["kind"] == "motion"
+            else [np.round(camera_moves._speeds(s), 2).tolist() for s in c["takes"]] if c["kind"] == "move" else [],
         }
 
     def _key_conflict(self, binding):
@@ -692,20 +859,22 @@ class Engine:
                 "phase": "perform", "trigger": trigger, "started": now,
                 "ready_at": now + (CAPTURE_READY_S if trigger == "clash" else 0.6),
                 "kind": editing["kind"] if editing else kind,
-                "source": editing["source"] if editing else ("webcam" if kind == "pose" else None),
+                "source": editing["source"] if editing else ("webcam" if kind in ("pose", "move") else None),
                 "takes": [], "target": int(self.settings["capture_takes"]),
                 "message": "", "key": None, "name": "", "casts": "", "mode": "tap",
                 "tooltip_type": None, "tooltip_text": "", "editing": gid,
-                "pose_since": None, "steady_since": None,
+                "pose_since": None, "steady_since": None, "move_hold": None, "weapon_spans": [],
             }
+            self.move_seg.reset()
         self.emit({"type": "capture", **self._capture_public()})
 
     def _capture_motion(self, dev, segment, host):
         c = self.capture
-        if c["phase"] != "perform" or host < c["ready_at"] or c["kind"] == "pose":
+        if c["phase"] != "perform" or host < c["ready_at"] or c["kind"] in ("pose", "move"):
             return
         if c["source"] is None:
             c["source"], c["kind"] = dev.role, "motion"
+            c["move_hold"] = None
         if dev.role != c["source"]:
             c["message"] = f"That was the {dev.role}; this move is on the {c['source']}"
             return
@@ -722,6 +891,8 @@ class Engine:
             # The first "take" was the slow swing back; start over from this one.
             c["takes"], peaks[:], c["paths"], c["path_jobs"] = [], [], [], []
         peaks.append(pk)
+        c.setdefault("weapon_spans", []).append((dev.clock.host(segment[0, 0]), dev.clock.host(segment[-1, 0]),
+                                                 dev.side))
         c["takes"].append(np.round(segment, 4).tolist())
         c.setdefault("paths", []).append(None)
         c.setdefault("path_jobs", []).append((len(c["takes"]) - 1, dev.name, dev.clock.host(segment[0, 0]),
@@ -736,7 +907,7 @@ class Engine:
 
     def _capture_pose(self, feat, landmarks, aspect, t):
         c = self.capture
-        if c["phase"] != "perform" or self.clock() < c["ready_at"] or c["kind"] == "motion":
+        if c["phase"] != "perform" or self.clock() < c["ready_at"] or c["kind"] in ("motion", "move"):
             return
         if feat is None:
             c["steady_since"] = None
@@ -751,6 +922,7 @@ class Engine:
                 c["steady_since"] = c["steady_since"] or now
                 if now - c["steady_since"] >= POSE_STEADY_S:
                     c["kind"], c["source"] = "pose", "webcam"
+                    c["move_hold"] = None
             else:
                 c["steady_since"] = None
             if c["kind"] is None:
@@ -781,11 +953,15 @@ class Engine:
     def finish_perform(self):
         with self.lock:
             c = self.capture
+            if c and c.get("move_hold") is not None:
+                self._commit_move_take()
             if c and c["phase"] == "perform" and (len(c["takes"]) >= 3 or c["kind"] == "pose" and c["takes"]):
                 self._finish_perform()
 
     def _finish_perform(self):
         c = self.capture
+        if c["kind"] == "move" and c["takes"]:
+            c["auto_scope"] = camera_moves.auto_scope(c["takes"])
         if c["kind"] == "motion":
             self._fill_paths(final=True)
             paths = c.get("paths") or [None] * len(c["takes"])
@@ -800,6 +976,12 @@ class Engine:
             if g is not None:
                 if g["kind"] == "pose":
                     g["samples"] = _cap(g["samples"] + c["takes"], MAX_POSE_SAMPLES)
+                elif g["kind"] == "move":
+                    old = g.get("skeletons") or []
+                    old = old + [None] * (len(g["templates"]) - len(old))
+                    g["templates"] = g["templates"] + c["takes"]
+                    g["skeletons"] = old + (c.get("skeletons") or [None] * len(c["takes"]))
+                    g["auto_scope"] = camera_moves.auto_scope(g["templates"])
                 else:
                     old = g.get("paths") or []
                     old = old + [None] * (len(g["templates"]) - len(old))
@@ -814,8 +996,9 @@ class Engine:
             self.emit(self.snapshot())
             return
         c["phase"] = "bind"
-        n = sum(1 for g in self.profile["gestures"] if g["source"] == c["source"]) + 1
-        c["name"] = {"bow": f"Bow move {n}", "melee": f"Melee move {n}"}.get(c["source"], f"Pose {n}")
+        n = sum(1 for g in self.profile["gestures"] if g["source"] == c["source"] and g["kind"] == c["kind"]) + 1
+        c["name"] = {"bow": f"Bow move {n}", "melee": f"Melee move {n}"}.get(
+            c["source"], f"Body move {n}" if c["kind"] == "move" else f"Pose {n}")
         self.emit({"type": "capture", **self._capture_public()})
 
     def capture_key(self, binding):
@@ -842,6 +1025,11 @@ class Engine:
                               "steps": [s for s in [c["tooltip_text"].strip()] if s]})
             if c["kind"] == "pose":
                 g["samples"] = _cap(c["takes"], MAX_POSE_SAMPLES)
+            elif c["kind"] == "move":
+                g["templates"] = c["takes"]
+                g["skeletons"] = c.get("skeletons") or [None] * len(c["takes"])
+                g["auto_scope"] = c.get("auto_scope") or camera_moves.auto_scope(c["takes"])
+                g["scope"] = "auto"
             else:
                 g["templates"] = c["takes"]
                 g["paths"] = c.get("paths") or [None] * len(c["takes"])
@@ -1093,13 +1281,19 @@ class Engine:
                     elif g["kind"] == "motion":
                         g["templates"] = []
                         g["paths"] = []
+                    elif g["kind"] == "move":
+                        g["templates"] = []
+                        g["skeletons"] = []
             elif name == "remove_take":
                 g = self.gesture(op.get("id"))
                 i = int(op.get("index", -1))
-                if g is not None and g["kind"] == "motion" and 0 <= i < len(g["templates"]):
+                if g is not None and g["kind"] in ("motion", "move") and 0 <= i < len(g["templates"]):
                     g["templates"].pop(i)
-                    if i < len(g.get("paths") or []):
-                        g["paths"].pop(i)
+                    for k in ("paths", "skeletons"):
+                        if i < len(g.get(k) or []):
+                            g[k].pop(i)
+                    if g["kind"] == "move" and g["templates"]:
+                        g["auto_scope"] = camera_moves.auto_scope(g["templates"])
             elif name == "clear_neutral":
                 self.profile["neutral"] = []
             elif name == "clear_ignore":
@@ -1207,7 +1401,7 @@ class Engine:
             if self.capture is not None or self.calib is not None:
                 return
             gs = [g for g in self.profile["gestures"] if g.get("enabled", True) and self._ready(g)
-                  and g["kind"] in ("pose", "motion") and g.get("action") != "arm_toggle"
+                  and g["kind"] in ("pose", "motion", "move") and g.get("action") != "arm_toggle"
                   and (not ids or g["id"] in ids)]
             if not gs:
                 self.emit({"type": "drill", "phase": "empty"})
@@ -1281,6 +1475,49 @@ class Engine:
             g = self.gesture(gid)
             if g is not None:
                 self._send(g, "tap", needs_arm=False)
+
+
+class MoveScope:
+    """Live recognition of the body moves judged on one scope: its own segmenter (so the rest of
+    your body moving doesn't start or spoil a move), recognizer and piece joiner."""
+
+    def __init__(self, scope, start):
+        pts = camera_moves.SCOPES[scope]
+        self.name = scope
+        self.points = set(pts)
+        grounded = scope in camera_moves.GROUNDED
+        self.seg = camera_moves.MoveSegmenter(start=start, points=pts, grounded=grounded)
+        self.clf = camera_moves.MoveClassifier(points=pts, grounded=grounded)
+        self.joiner = camera_moves.MoveJoiner()
+        self.block = (-np.inf, set(), "")
+
+
+def move_scope(g):
+    """The scope a body move is judged on: what you chose, or (auto) the parts that moved."""
+    scope = g.get("scope") or "auto"
+    if scope == "auto":
+        scope = g.get("auto_scope") or "whole"
+    return scope if scope in camera_moves.SCOPES else "whole"
+
+
+def move_keyframes(skel, scope, compact=False):
+    """Recorded skeleton frames -> what the UI draws: first, furthest and last frames plus
+    trails for the joints that matter for this scope."""
+    frames = np.asarray(skel["frames"], dtype=float)          # (k, 33, 3): x, y, visibility
+    joints = TRAIL_JOINTS.get(scope)
+    if joints is None:      # whole body: the two joints (of hands, feet, head) that travelled most
+        cand = [15, 16, 27, 28, 0]
+        travel = [float(np.linalg.norm(np.diff(frames[:, j, :2], axis=0), axis=1).sum()) for j in cand]
+        joints = [cand[i] for i in np.argsort(travel)[::-1][:2]]
+    far = int(np.argmax([np.linalg.norm(f[joints, :2] - frames[0][joints, :2]) for f in frames]))
+    pick = [far] if compact else [0, far, len(frames) - 1]
+    return {"aspect": skel["aspect"], "frames": [np.round(frames[i], 3).tolist() for i in pick],
+            "trails": {str(j): np.round(frames[:, j, :2], 3).tolist() for j in joints}}
+
+
+def camera_moves_held(result):
+    """A body move recognized but not sent (a tie between two moves)."""
+    return result["ambiguous"][0] if not result.get("gid") and result.get("ambiguous") else None
 
 
 def prune_takes(takes):

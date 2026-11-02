@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-01",
+ "generated": "2026-11-02",
  "real_gyro": {
   "source": "6DMG: 28 people, handheld gyro + accelerometer (CC BY 4.0)",
   "sets": [
@@ -290,87 +290,46 @@
   "camera_lag_s": 0.26,
   "wrist_label": "left"
  },
+ "camera_only": {
+  "source": "UTD-MHAD: 8 people x 27 actions x 4 trials, RGB video only (MediaPipe)",
+  "rows": [
+   {
+    "label": "21 arm actions",
+    "correct": 94.0,
+    "wrong": 0.1,
+    "rejected": 5.8,
+    "live": 93.1
+   },
+   {
+    "label": "6 leg and body moves",
+    "correct": 80.0,
+    "wrong": 0.5,
+    "rejected": 19.5,
+    "live": 79.5
+   },
+   {
+    "label": "all 27",
+    "correct": 90.6,
+    "wrong": 0.2,
+    "rejected": 9.2,
+    "live": 89.7
+   }
+  ],
+  "largest": 23,
+  "open_set_false_fire": 4.9
+ },
  "sim_fusion": {
   "sets": [
    {
     "label": "melee: 5 distinct (the starter set)",
     "gyro": {
      "moves": 180,
-     "correct": 180,
-     "missed": 0,
+     "correct": 176,
+     "missed": 4,
      "extra": 0,
      "waited": 0,
      "decisions": 201,
-     "correct_pct": 100.0,
-     "waited_for_camera_pct": 0.0
-    },
-    "fused": {
-     "moves": 180,
-     "correct": 179,
-     "missed": 1,
-     "extra": 0,
-     "waited": 23,
-     "decisions": 201,
-     "correct_pct": 99.4,
-     "waited_for_camera_pct": 11.4
-    }
-   },
-   {
-    "label": "melee: 9: + high/low slash and thrust",
-    "gyro": {
-     "moves": 180,
-     "correct": 88,
-     "missed": 92,
-     "extra": 47,
-     "waited": 0,
-     "decisions": 203,
-     "correct_pct": 48.9,
-     "waited_for_camera_pct": 0.0
-    },
-    "fused": {
-     "moves": 180,
-     "correct": 179,
-     "missed": 1,
-     "extra": 1,
-     "waited": 140,
-     "decisions": 203,
-     "correct_pct": 99.4,
-     "waited_for_camera_pct": 69.0
-    }
-   },
-   {
-    "label": "melee: 12: + cross chop, lob, jab",
-    "gyro": {
-     "moves": 180,
-     "correct": 75,
-     "missed": 105,
-     "extra": 48,
-     "waited": 0,
-     "decisions": 203,
-     "correct_pct": 41.7,
-     "waited_for_camera_pct": 0.0
-    },
-    "fused": {
-     "moves": 180,
-     "correct": 144,
-     "missed": 36,
-     "extra": 12,
-     "waited": 175,
-     "decisions": 202,
-     "correct_pct": 80.0,
-     "waited_for_camera_pct": 86.6
-    }
-   },
-   {
-    "label": "bow: 5 distinct (the starter set)",
-    "gyro": {
-     "moves": 180,
-     "correct": 177,
-     "missed": 3,
-     "extra": 0,
-     "waited": 0,
-     "decisions": 204,
-     "correct_pct": 98.3,
+     "correct_pct": 97.8,
      "waited_for_camera_pct": 0.0
     },
     "fused": {
@@ -379,32 +338,136 @@
      "missed": 0,
      "extra": 0,
      "waited": 30,
-     "decisions": 203,
+     "decisions": 199,
      "correct_pct": 100.0,
-     "waited_for_camera_pct": 14.8
+     "waited_for_camera_pct": 15.1
+    },
+    "camera_only": {
+     "moves": 180,
+     "correct": 120,
+     "missed": 60,
+     "extra": 9,
+     "correct_pct": 66.7
+    }
+   },
+   {
+    "label": "melee: 9: + high/low slash and thrust",
+    "gyro": {
+     "moves": 180,
+     "correct": 87,
+     "missed": 93,
+     "extra": 32,
+     "waited": 0,
+     "decisions": 202,
+     "correct_pct": 48.3,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 179,
+     "missed": 1,
+     "extra": 0,
+     "waited": 143,
+     "decisions": 202,
+     "correct_pct": 99.4,
+     "waited_for_camera_pct": 70.8
+    },
+    "camera_only": {
+     "moves": 180,
+     "correct": 106,
+     "missed": 74,
+     "extra": 2,
+     "correct_pct": 58.9
+    }
+   },
+   {
+    "label": "melee: 12: + cross chop, lob, jab",
+    "gyro": {
+     "moves": 180,
+     "correct": 74,
+     "missed": 106,
+     "extra": 41,
+     "waited": 0,
+     "decisions": 187,
+     "correct_pct": 41.1,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 149,
+     "missed": 31,
+     "extra": 6,
+     "waited": 159,
+     "decisions": 189,
+     "correct_pct": 82.8,
+     "waited_for_camera_pct": 84.1
+    },
+    "camera_only": {
+     "moves": 180,
+     "correct": 88,
+     "missed": 92,
+     "extra": 11,
+     "correct_pct": 48.9
+    }
+   },
+   {
+    "label": "bow: 5 distinct (the starter set)",
+    "gyro": {
+     "moves": 180,
+     "correct": 180,
+     "missed": 0,
+     "extra": 0,
+     "waited": 0,
+     "decisions": 200,
+     "correct_pct": 100.0,
+     "waited_for_camera_pct": 0.0
+    },
+    "fused": {
+     "moves": 180,
+     "correct": 180,
+     "missed": 0,
+     "extra": 0,
+     "waited": 23,
+     "decisions": 200,
+     "correct_pct": 100.0,
+     "waited_for_camera_pct": 11.5
+    },
+    "camera_only": {
+     "moves": 180,
+     "correct": 17,
+     "missed": 163,
+     "extra": 0,
+     "correct_pct": 9.4
     }
    },
    {
     "label": "bow: 8: + high/low punch, wide yank",
     "gyro": {
      "moves": 180,
-     "correct": 97,
-     "missed": 83,
-     "extra": 31,
+     "correct": 100,
+     "missed": 80,
+     "extra": 26,
      "waited": 0,
      "decisions": 197,
-     "correct_pct": 53.9,
+     "correct_pct": 55.6,
      "waited_for_camera_pct": 0.0
     },
     "fused": {
      "moves": 180,
-     "correct": 177,
-     "missed": 3,
+     "correct": 179,
+     "missed": 1,
      "extra": 0,
-     "waited": 127,
-     "decisions": 197,
-     "correct_pct": 98.3,
-     "waited_for_camera_pct": 64.5
+     "waited": 128,
+     "decisions": 194,
+     "correct_pct": 99.4,
+     "waited_for_camera_pct": 66.0
+    },
+    "camera_only": {
+     "moves": 180,
+     "correct": 49,
+     "missed": 131,
+     "extra": 0,
+     "correct_pct": 27.2
     }
    }
   ],
@@ -414,110 +477,110 @@
     "moves": 180,
     "correct": 179,
     "missed": 1,
-    "extra": 1,
-    "waited": 140,
-    "decisions": 203,
+    "extra": 0,
+    "waited": 143,
+    "decisions": 202,
     "correct_pct": 99.4,
-    "waited_for_camera_pct": 69.0
+    "waited_for_camera_pct": 70.8
    },
    {
     "label": "15 fps webcam",
     "moves": 180,
-    "correct": 179,
-    "missed": 1,
+    "correct": 178,
+    "missed": 2,
     "extra": 0,
-    "waited": 138,
-    "decisions": 202,
-    "correct_pct": 99.4,
-    "waited_for_camera_pct": 68.3
+    "waited": 156,
+    "decisions": 208,
+    "correct_pct": 98.9,
+    "waited_for_camera_pct": 75.0
    },
    {
     "label": "twice the blur and lost frames",
     "moves": 180,
     "correct": 179,
     "missed": 1,
-    "extra": 1,
-    "waited": 140,
-    "decisions": 203,
+    "extra": 0,
+    "waited": 143,
+    "decisions": 202,
     "correct_pct": 99.4,
-    "waited_for_camera_pct": 69.0
+    "waited_for_camera_pct": 70.8
    },
    {
     "label": "camera delay misjudged by 80 ms",
     "moves": 180,
-    "correct": 179,
-    "missed": 1,
-    "extra": 1,
-    "waited": 140,
-    "decisions": 203,
-    "correct_pct": 99.4,
-    "waited_for_camera_pct": 69.0
+    "correct": 178,
+    "missed": 2,
+    "extra": 0,
+    "waited": 143,
+    "decisions": 202,
+    "correct_pct": 98.9,
+    "waited_for_camera_pct": 70.8
    },
    {
     "label": "turned 30 degrees from the camera",
     "moves": 180,
-    "correct": 145,
-    "missed": 35,
-    "extra": 3,
-    "waited": 142,
-    "decisions": 207,
-    "correct_pct": 80.6,
-    "waited_for_camera_pct": 68.6
+    "correct": 140,
+    "missed": 40,
+    "extra": 0,
+    "waited": 149,
+    "decisions": 208,
+    "correct_pct": 77.8,
+    "waited_for_camera_pct": 71.6
    },
    {
     "label": "camera blocked (falls back to gyro)",
     "moves": 180,
-    "correct": 61,
-    "missed": 119,
+    "correct": 55,
+    "missed": 125,
     "extra": 0,
-    "waited": 146,
+    "waited": 153,
     "decisions": 205,
-    "correct_pct": 33.9,
-    "waited_for_camera_pct": 71.2
+    "correct_pct": 30.6,
+    "waited_for_camera_pct": 74.6
    },
    {
     "label": "sloppier player (1.6x variation)",
     "moves": 180,
     "correct": 166,
     "missed": 14,
-    "extra": 0,
-    "waited": 147,
-    "decisions": 208,
+    "extra": 1,
+    "waited": 178,
+    "decisions": 213,
     "correct_pct": 92.2,
-    "waited_for_camera_pct": 70.7
+    "waited_for_camera_pct": 83.6
    }
   ],
   "auto_align": {
    "no correction": {
-    "first_40_correct_pct": 65.8,
-    "last_40_correct_pct": 62.5,
+    "first_40_correct_pct": 56.7,
+    "last_40_correct_pct": 58.3,
     "mount_error_left_deg": 35.0
    },
    "auto-align, gyro decides": {
-    "first_40_correct_pct": 69.2,
-    "last_40_correct_pct": 81.7,
-    "mount_error_left_deg": 15.9
+    "first_40_correct_pct": 59.2,
+    "last_40_correct_pct": 74.2,
+    "mount_error_left_deg": 26.5
    },
    "auto-align, camera + gyro decide": {
-    "first_40_correct_pct": 98.3,
-    "last_40_correct_pct": 98.3,
-    "mount_error_left_deg": 2.7
+    "first_40_correct_pct": 99.2,
+    "last_40_correct_pct": 99.2,
+    "mount_error_left_deg": 3.9
    },
    "no slip, auto-align on (should stay put)": {
     "first_40_correct_pct": 100.0,
-    "last_40_correct_pct": 98.3,
-    "mount_error_left_deg": 2.8
+    "last_40_correct_pct": 99.2,
+    "mount_error_left_deg": 3.1
    }
   },
   "bias": {
    "gyro-only still tracker": {
-    "offset_error_at_end_deg_s": 34.1,
-    "correct_pct": 87.5,
+    "offset_error_at_end_deg_s": 33.8,
+    "correct_pct": 79.3,
     "true_offset_deg_s": 19.9
    },
    "+ camera stillness": {
-    "offset_error_at_end_deg_s": 2.8,
-    "correct_pct": 100.0,
+    "offset_error_at_end_deg_s": 2.6,
+    "correct_pct": 97.5,
     "true_offset_deg_s": 19.9
    }
   }

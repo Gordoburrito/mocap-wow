@@ -189,12 +189,16 @@ def auto_threshold(templates):
     return float(np.clip(2.0 * np.median(nearest), 0.35, 0.85))
 
 
-def _thresholds(D, owners, ign=None):
+def _thresholds(D, owners, ign=None, lo=None, hi=None, default=None):
     """Per-gesture thresholds from a full take-to-take distance matrix.
 
     D: (T, T) distances between every pair of takes (NaN = not comparable); owners: the
-    gesture of each take; ign: (T, I) distances from each take to each ignored move.
+    gesture of each take; ign: (T, I) distances from each take to each ignored move;
+    lo/hi/default: threshold limits in the distance's own units (gyro units by default).
     """
+    lo = MIN_THRESHOLD if lo is None else lo
+    hi = MAX_THRESHOLD if hi is None else hi
+    default = DEFAULT_THRESHOLD if default is None else default
     out = {}
     gids = list(dict.fromkeys(owners))
     own = {gid: [i for i, o in enumerate(owners) if o == gid] for gid in gids}
@@ -204,7 +208,7 @@ def _thresholds(D, owners, ign=None):
             rest = [j for j in idx if j != i and np.isfinite(D[i, j])]
             if rest:
                 loo.append(min(D[i, j] for j in rest))
-        spread = float(np.percentile(loo, 90)) if loo else DEFAULT_THRESHOLD / 2
+        spread = float(np.percentile(loo, 90)) if loo else default / 2
         nearest, nearest_gid = np.inf, None
         for other, oidx in own.items():
             if other == gid:
@@ -221,7 +225,7 @@ def _thresholds(D, owners, ign=None):
         threshold = 1.8 * spread
         if np.isfinite(nearest):
             threshold = min(threshold, 0.6 * nearest)
-        threshold = float(np.clip(max(threshold, 1.15 * spread), MIN_THRESHOLD, MAX_THRESHOLD))
+        threshold = float(np.clip(max(threshold, 1.15 * spread), lo, hi))
         out[gid] = {
             "threshold": threshold, "spread": spread,
             "nearest": nearest if np.isfinite(nearest) else None, "nearest_gid": nearest_gid,

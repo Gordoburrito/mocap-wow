@@ -1,0 +1,358 @@
+{
+ "segmenter": {
+  "clips": 861,
+  "one_piece_pct": 76.7,
+  "split_pct": 20.7,
+  "missed_pct": 2.7
+ },
+ "all 27": {
+  "cut": {
+   "correct": 780,
+   "wrong": 2,
+   "rejected": 79,
+   "correct_pct": 90.6,
+   "wrong_pct": 0.2,
+   "rejected_pct": 9.2,
+   "n": 861
+  },
+  "live": {
+   "correct": 772,
+   "wrong": 3,
+   "rejected": 86,
+   "correct_pct": 89.7,
+   "wrong_pct": 0.3,
+   "rejected_pct": 10.0,
+   "n": 861
+  },
+  "confusion": {
+   "1": {
+    "1": 32
+   },
+   "2": {
+    "2": 32
+   },
+   "3": {
+    "3": 29,
+    "None": 3
+   },
+   "4": {
+    "4": 30,
+    "None": 2
+   },
+   "5": {
+    "5": 28,
+    "None": 4
+   },
+   "6": {
+    "6": 30,
+    "None": 2
+   },
+   "7": {
+    "7": 32
+   },
+   "8": {
+    "8": 29,
+    "None": 2
+   },
+   "9": {
+    "None": 1,
+    "9": 31
+   },
+   "10": {
+    "None": 3,
+    "10": 29
+   },
+   "11": {
+    "11": 30,
+    "10": 1,
+    "None": 1
+   },
+   "12": {
+    "12": 30,
+    "None": 2
+   },
+   "13": {
+    "13": 28,
+    "None": 4
+   },
+   "14": {
+    "14": 29,
+    "None": 3
+   },
+   "15": {
+    "15": 30,
+    "None": 2
+   },
+   "16": {
+    "16": 26,
+    "None": 6
+   },
+   "17": {
+    "17": 32
+   },
+   "18": {
+    "18": 31,
+    "None": 1
+   },
+   "19": {
+    "19": 31,
+    "None": 1
+   },
+   "20": {
+    "None": 5,
+    "20": 27
+   },
+   "21": {
+    "21": 32
+   },
+   "22": {
+    "22": 30,
+    "None": 2
+   },
+   "23": {
+    "None": 17,
+    "23": 13,
+    "22": 1
+   },
+   "24": {
+    "24": 30,
+    "None": 2
+   },
+   "25": {
+    "None": 13,
+    "25": 19
+   },
+   "26": {
+    "26": 31,
+    "None": 1
+   },
+   "27": {
+    "27": 29,
+    "None": 2
+   }
+  }
+ },
+ "21 arm actions": {
+  "cut": {
+   "correct": 631,
+   "wrong": 1,
+   "rejected": 39,
+   "correct_pct": 94.0,
+   "wrong_pct": 0.1,
+   "rejected_pct": 5.8,
+   "n": 671
+  },
+  "live": {
+   "correct": 625,
+   "wrong": 1,
+   "rejected": 45,
+   "correct_pct": 93.1,
+   "wrong_pct": 0.1,
+   "rejected_pct": 6.7,
+   "n": 671
+  },
+  "confusion": {
+   "1": {
+    "1": 32
+   },
+   "2": {
+    "2": 32
+   },
+   "3": {
+    "3": 29,
+    "None": 3
+   },
+   "4": {
+    "4": 30,
+    "None": 2
+   },
+   "5": {
+    "5": 28,
+    "None": 4
+   },
+   "6": {
+    "6": 30,
+    "None": 2
+   },
+   "7": {
+    "7": 32
+   },
+   "8": {
+    "8": 29,
+    "None": 2
+   },
+   "9": {
+    "None": 1,
+    "9": 31
+   },
+   "10": {
+    "None": 3,
+    "10": 29
+   },
+   "11": {
+    "11": 30,
+    "10": 1,
+    "None": 1
+   },
+   "12": {
+    "12": 32
+   },
+   "13": {
+    "13": 28,
+    "None": 4
+   },
+   "14": {
+    "14": 29,
+    "None": 3
+   },
+   "15": {
+    "15": 31,
+    "None": 1
+   },
+   "16": {
+    "16": 26,
+    "None": 6
+   },
+   "17": {
+    "17": 32
+   },
+   "18": {
+    "18": 31,
+    "None": 1
+   },
+   "19": {
+    "19": 31,
+    "None": 1
+   },
+   "20": {
+    "None": 5,
+    "20": 27
+   },
+   "21": {
+    "21": 32
+   }
+  }
+ },
+ "6 leg and body moves": {
+  "cut": {
+   "correct": 152,
+   "wrong": 1,
+   "rejected": 37,
+   "correct_pct": 80.0,
+   "wrong_pct": 0.5,
+   "rejected_pct": 19.5,
+   "n": 190
+  },
+  "live": {
+   "correct": 151,
+   "wrong": 1,
+   "rejected": 38,
+   "correct_pct": 79.5,
+   "wrong_pct": 0.5,
+   "rejected_pct": 20.0,
+   "n": 190
+  },
+  "confusion": {
+   "22": {
+    "22": 30,
+    "None": 2
+   },
+   "23": {
+    "None": 17,
+    "23": 13,
+    "22": 1
+   },
+   "24": {
+    "24": 30,
+    "None": 2
+   },
+   "25": {
+    "None": 13,
+    "25": 19
+   },
+   "26": {
+    "26": 31,
+    "None": 1
+   },
+   "27": {
+    "27": 29,
+    "None": 2
+   }
+  }
+ },
+ "open_set_false_fire_pct": 4.9,
+ "open_set_tests": 530,
+ "curve": {
+  "4": {
+   "correct": 92.9,
+   "wrong": 0.1
+  },
+  "6": {
+   "correct": 90.8,
+   "wrong": 0.1
+  },
+  "8": {
+   "correct": 94.3,
+   "wrong": 0.0
+  },
+  "10": {
+   "correct": 92.6,
+   "wrong": 0.1
+  },
+  "12": {
+   "correct": 94.0,
+   "wrong": 0.1
+  },
+  "15": {
+   "correct": 92.2,
+   "wrong": 0.2
+  },
+  "18": {
+   "correct": 91.2,
+   "wrong": 0.1
+  },
+  "21": {
+   "correct": 91.4,
+   "wrong": 0.1
+  },
+  "27": {
+   "correct": 90.6,
+   "wrong": 0.2
+  }
+ },
+ "largest_set": {
+  "count": 23,
+  "actions": [
+   "swipe left",
+   "swipe right",
+   "wave",
+   "clap",
+   "throw",
+   "arm cross",
+   "basketball shoot",
+   "draw X",
+   "draw circle (cw)",
+   "draw circle (ccw)",
+   "draw triangle",
+   "bowling",
+   "boxing",
+   "baseball swing",
+   "tennis swing",
+   "tennis serve",
+   "push",
+   "knock",
+   "pickup and throw",
+   "jog in place",
+   "sit to stand",
+   "lunge",
+   "squat"
+  ],
+  "correct": 701,
+  "wrong": 1,
+  "rejected": 32,
+  "correct_pct": 95.5,
+  "wrong_pct": 0.1,
+  "rejected_pct": 4.4,
+  "n": 734
+ }
+}

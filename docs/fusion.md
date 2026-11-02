@@ -77,6 +77,13 @@ Rejection on, so a rejected move counts as a miss, not a wrong key.
 - The camera's delay was found from the moves: the dataset's own 260 ms, plus an added 60 ms
   (8 of 8 people within 20 ms) or 120 ms (7 of 8).
 
+**Against the camera alone.** On the same 21 arm actions, the webcam watching your whole body
+(the body-move recognizer, docs/body-moves.md) got 94.0% right with 0.1% wrong keys, better than
+camera + gyro with the weapon wrist's path. Used inside camera + gyro, those whole-body features
+raised it from 90.3% to 93.4% right (0.1% wrong). That swap isn't in the app yet: the weapon-hand
+path measures sideways position from where your hand rests, which is what keeps turning your body
+from shifting every move, and whole-body features would need the same care first.
+
 ### A Joy-Con on a pipe + webcam (simulated)
 
 No dataset has a Joy-Con at the tip of a pipe *and* a webcam, so this part is simulated: the
@@ -85,52 +92,53 @@ both weapons and a webcam with MediaPipe-like errors (`mocap/sim/body.py`), the 
 MediaPipe on the real UTD-MHAD video. Fights of 3 × 60 moves, each followed by its swing back;
 everything through the app's pipeline sample by sample.
 
-| Set (180 moves) | Gyro only | Camera + gyro | Camera blocked |
-|---|---|---|---|
-| Melee: slash L, slash R, chop, thrust, circle | 180, 0 wrong keys | 179, 0 | 180, 0 |
-| Melee 9: + high/low slash, high/low thrust | 88, 47 wrong | **179, 1** | 61, 0 |
-| Melee 12: + cross chop, overhand lob, quick jab | 75, 48 wrong | 144, 12 | 28, 0 |
-| Bow: point, punch, yank, cant, twist | 177, 0 | 180, 0 | 178, 0 |
-| Bow 8: + high/low punch, wide yank | 97, 31 wrong | **177, 0** | 67, 0 |
+| Set (180 moves) | Gyro only | Camera only | Camera + gyro | Camera blocked |
+|---|---|---|---|---|
+| Melee: slash L, slash R, chop, thrust, circle | 176, 0 wrong keys | 120, 9 | **180, 0** | 178, 0 |
+| Melee 9: + high/low slash, high/low thrust | 87, 32 wrong | 106, 2 | **179, 0** | 55, 0 |
+| Melee 12: + cross chop, overhand lob, quick jab | 74, 41 wrong | 88, 11 | 149, 6 | 29, 0 |
+| Bow: point, punch, yank, cant, twist | 180, 0 | 17, 0 | **180, 0** | 178, 0 |
+| Bow 8: + high/low punch, wide yank | 100, 26 wrong | 49, 0 | **179, 0** | 61, 0 |
 
-"Gyro only" means moves recorded and played with no camera at all. "Camera blocked" means moves
-recorded with the camera and then played without it: twins are held back, so it's safe (0 wrong
-keys) but misses them.
+"Gyro only" means moves recorded and played with no camera at all. "Camera only" is the
+body-move recognizer (docs/body-moves.md) on the webcam alone: it can't see twists, cants or
+thrusts at the screen. "Camera blocked" means moves recorded with the camera and then played
+without it: twins are held back, so it's safe (0 wrong keys) but misses them.
 
-With the starter sets, the gyro alone was sure about 85–89% of motions, so only 11–15% waited for
-the camera. With the 9-move set, 69% waited.
+With the starter sets, the gyro alone was sure about 85–89% of motions, so only 12–15% waited for
+the camera. With the 9-move set, 71% waited.
 
 **Webcam conditions** (melee 9-move set, camera + gyro, 180 moves):
 
 | Condition | Right | Wrong keys |
 |---|---|---|
-| Normal webcam, 30 fps | 179 | 1 |
-| 15 fps webcam | 179 | 0 |
-| Twice the blur and lost frames | 179 | 1 |
-| Camera delay misjudged by 80 ms | 179 | 1 |
-| Player turned 30° from the camera | 145 | 3 |
-| A much sloppier player (1.6× the variation) | 166 | 0 |
+| Normal webcam, 30 fps | 179 | 0 |
+| 15 fps webcam | 178 | 0 |
+| Twice the blur and lost frames | 179 | 0 |
+| Camera delay misjudged by 80 ms | 178 | 0 |
+| Player turned 30° from the camera | 140 | 0 |
+| A much sloppier player (1.6× the variation) | 166 | 1 |
 
 **Keeping the gyro calibrated:**
 
 | | First 40 moves | Last 40 moves | Mount still off by |
 |---|---|---|---|
-| Joy-Con slipped 35° on the pipe, no correction | 65.8% | 62.5% | 35° |
-| Auto mount correction, gyro decides | 69.2% | 81.7% | 15.9° |
-| Auto mount correction, camera + gyro decide | 98.3% | 98.3% | 2.7° |
-| No slip, correction on (should stay put) | 100% | 98.3% | 2.8° |
+| Joy-Con slipped 35° on the pipe, no correction | 56.7% | 58.3% | 35° |
+| Auto mount correction, gyro decides | 59.2% | 74.2% | 26.5° |
+| Auto mount correction, camera + gyro decide | 99.2% | 99.2% | 3.9° |
+| No slip, correction on (should stay put) | 100% | 99.2% | 3.1° |
 
 | Never-calibrated Joy-Con, ~20°/s gyro offset drifting as it warms | Offset left at the end | Moves right |
 |---|---|---|
-| Gyro-only drift tracker | 34.1°/s | 87.5% |
-| + camera stillness | 2.8°/s | 100% |
+| Gyro-only drift tracker | 33.8°/s | 79.3% |
+| + camera stillness | 2.6°/s | 97.5% |
 
 ## Limits
 
 - The camera sees in 2D. A thrust *toward* the screen barely moves the hand on camera; that's
   the accelerometer's job. Moves that differ only in depth aren't helped.
 - It can't separate moves that happen in the same place (the chop vs an overhand lob).
-- Turning well away from the camera costs accuracy (30°: 145/180 in the 9-move set). Face the
+- Turning well away from the camera costs accuracy (30°: 140/180 in the 9-move set). Face the
   screen.
 - Moves that need the camera wait for it: ~40 ms typically, up to 150 ms.
 - Real-data caveats: UTD-MHAD's sensor is on the wrist, not at the tip of a pipe, and its video

@@ -20,6 +20,7 @@ import numpy as np
 
 from mocap import motion
 from mocap.calibration import DeviceCalibration, rotation_angle
+from mocap.camera_moves import MoveClassifier, MoveJoiner, MoveSegmenter
 from mocap.fusion import CameraTrack
 from mocap.sim.body import GUARD, SIDE_OF, Webcam
 from mocap.sim.stick import BOW, BOW_GESTURES, MELEE, MELEE_GESTURES, Stroke, human_variation, reverse, rot, simulate
@@ -253,17 +254,73 @@ def fight(device, names, mode, seeds=(1, 2, 3), n=60, cam=CAMERA, rec_cam=CAMERA
     return total
 
 
+def _camera_segments(frames, flush=True):
+    seg = MoveSegmenter()
+    out = []
+    for ft, lm, asp in frames:
+        r = seg.feed(ft, lm, asp)
+        if r is not None:
+            out.append(r)
+    if flush and frames:
+        r = seg.flush(frames[-1][0])
+        if r is not None:
+            out.append(r)
+    return out
+
+
+def camera_fight(device, names, seeds=(1, 2, 3), n=60, cam=CAMERA):
+    """The same fights, recognized by the webcam alone (the app's body-move recognizer), no gyro."""
+    total = {"moves": 0, "correct": 0, "missed": 0, "extra": 0}
+    for seed in seeds:
+        rng = np.random.default_rng(seed)
+        takes = {}
+        for name in names:
+            takes[name] = []
+            for _ in range(5):
+                _, frames = perform(device, strokes_for(device, name), rng, cam=cam)
+                pieces = _camera_segments(frames)
+                if pieces:
+                    takes[name].append(np.concatenate(pieces))
+        clf = MoveClassifier()
+        clf.set_data([(nm, t) for nm, t in takes.items() if t])
+        stream, frames, expected = fight_stream(device, names, rng, n, cam=cam)
+        fired, times = [], []
+        seg, joiner = MoveSegmenter(), MoveJoiner()
+        locked, block = -np.inf, (-np.inf, set())
+        for ft, lm, asp in frames:
+            joiner.expire(ft)
+            r = seg.feed(ft, lm, asp)
+            if r is None or r[0, 0] < locked:
+                continue
+            res, used = joiner.offer(r, clf.classify)
+            gid = res["gid"]
+            if gid and gid in block[1] and used[0, 0] < block[0] and res["matches"].get(gid, 0) < 0.75:
+                continue
+            if gid:
+                fired.append(gid)
+                times.append(float(used[0, 0]) - cam.lag)
+                locked = used[-1, 0] + 0.3
+                block = (used[-1, 0] + 1.0, clf.mirrors.get(gid, set()))
+        sc = score(fired, times, expected, fight_stream.starts)
+        for k in total:
+            total[k] += sc[k]
+    total["correct_pct"] = round(100 * total["correct"] / total["moves"], 1)
+    return total
+
+
 def sets_experiment():
     out = {}
     for device, sets in SETS.items():
         for label, names in sets.items():
             row = {mode: fight(device, names, mode) for mode in ("gyro", "fused")}
             row["camera_blocked"] = fight(device, names, "fused", cam=replace(CAMERA, blocked=True))
+            row["camera_only"] = camera_fight(device, names)
             out[f"{device}: {label}"] = row
             print(f"  {device:5s} {label:34s} gyro {row['gyro']['correct']}/{row['gyro']['moves']} "
                   f"(+{row['gyro']['extra']} extra)   camera+gyro {row['fused']['correct']}/{row['fused']['moves']} "
                   f"(+{row['fused']['extra']} extra, waited for the camera on {row['fused']['waited_for_camera_pct']}% of motions)"
-                  f"   camera blocked {row['camera_blocked']['correct']}/{row['camera_blocked']['moves']} (+{row['camera_blocked']['extra']} extra)")
+                  f"   camera blocked {row['camera_blocked']['correct']}/{row['camera_blocked']['moves']} (+{row['camera_blocked']['extra']} extra)"
+                  f"   camera only {row['camera_only']['correct']}/{row['camera_only']['moves']} (+{row['camera_only']['extra']} extra)")
     return out
 
 

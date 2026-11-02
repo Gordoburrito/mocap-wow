@@ -23,6 +23,19 @@ WEIGHTS = np.array([_WEIGHTS[i] for i in IDX])
 VISIBLE = 0.5
 DEFAULT_THRESHOLD = 0.30          # weighted RMS distance, in shoulder widths
 MIN_WEIGHT = 6.0                  # need shoulders + some arm landmarks to judge a pose
+# A pose can be judged on one body part only ("left arm up", whatever the rest of you does).
+SCOPES = {"whole": None, "left_arm": (13, 15, 19), "right_arm": (14, 16, 20),
+          "arms": (13, 14, 15, 16, 19, 20), "left_leg": (23, 25, 27), "right_leg": (24, 26, 28),
+          "legs": (23, 24, 25, 26, 27, 28), "head": (0,)}
+
+
+def scope_weights(scope):
+    """(weights, minimum visible weight) for judging a pose on one scope."""
+    joints = SCOPES.get(scope)
+    if joints is None:
+        return WEIGHTS, MIN_WEIGHT
+    w = np.array([_WEIGHTS[i] if i in joints else 0.0 for i in IDX])
+    return w, min(MIN_WEIGHT, 0.6 * float(w.sum()))
 
 
 def features(landmarks, aspect):
@@ -38,16 +51,16 @@ def features(landmarks, aspect):
     return (xy[IDX] - center) / scale, lm[IDX, 3]
 
 
-def distances(pts, vis, bank_pts, bank_vis):
+def distances(pts, vis, bank_pts, bank_vis, weights=WEIGHTS, min_weight=MIN_WEIGHT):
     """Weighted RMS distance from one pose to each pose in a bank. Returns (N,) array."""
     if len(bank_pts) == 0:
         return np.empty(0)
     mask = (bank_vis > VISIBLE) & (vis > VISIBLE)
-    w = WEIGHTS * mask
+    w = weights * mask
     wsum = w.sum(axis=1)
     d2 = ((bank_pts - pts) ** 2).sum(axis=2)
     out = np.sqrt((w * d2).sum(axis=1) / np.maximum(wsum, 1e-9))
-    out[wsum < MIN_WEIGHT] = np.inf
+    out[wsum < min_weight] = np.inf
     return out
 
 
@@ -65,17 +78,17 @@ def _knn(d, k=3):
     return float(np.mean(np.partition(d, k - 1)[:k]))
 
 
-def _knn_bank(pts, vis, bank_pts, bank_vis, k=3):
-    return _knn(distances(pts, vis, bank_pts, bank_vis), k)
+def _knn_bank(pts, vis, bank_pts, bank_vis, k=3, ws=(WEIGHTS, MIN_WEIGHT)):
+    return _knn(distances(pts, vis, bank_pts, bank_vis, *ws), k)
 
 
-def separation(bank_a, bank_b, max_samples=40):
+def separation(bank_a, bank_b, max_samples=40, ws=(WEIGHTS, MIN_WEIGHT)):
     """Typical distance from poses in bank A to the nearest poses in bank B."""
     pts, vis = bank_a
     if not len(pts) or not len(bank_b[0]):
         return np.inf
     idx = np.linspace(0, len(pts) - 1, min(len(pts), max_samples)).round().astype(int)
-    return float(np.median([_knn_bank(pts[i], vis[i], *bank_b) for i in idx]))
+    return float(np.median([_knn_bank(pts[i], vis[i], *bank_b, ws=ws) for i in idx]))
 
 
 MIN_POSE_THRESHOLD, MAX_POSE_THRESHOLD = 0.22, 0.7
@@ -89,23 +102,26 @@ class PoseClassifier:
         self.neutral_spread = 0.0
 
     def set_data(self, gestures, neutral_samples, sensitivity=None):
-        """gestures: iterable of (gid, samples, threshold). A threshold of None means calibrate:
-        half the distance to the nearest other pose (or to neutral), so poses that are far from
-        everything else tolerate more natural variation."""
+        """gestures: iterable of (gid, samples, threshold[, scope]). A threshold of None means
+        calibrate: half the distance to the nearest other pose (or to neutral), so poses that are
+        far from everything else tolerate more natural variation. A scope ("left_arm"...) judges
+        the pose on that body part only."""
         sensitivity = sensitivity or {}
         self.neutral = _bank(neutral_samples)
         self.neutral_spread = self._self_spread(self.neutral)
         banks = []
-        for gid, samples, threshold in gestures:
+        for item in gestures:
+            gid, samples, threshold = item[:3]
+            scope = item[3] if len(item) > 3 else "whole"
             pts, vis = _bank(samples)
             if len(pts):
-                banks.append((gid, pts, vis, threshold))
+                banks.append((gid, pts, vis, threshold, scope_weights(scope)))
         self.gestures, self.calibration = [], {}
-        for gid, pts, vis, threshold in banks:
-            nearest, nearest_gid = separation((pts, vis), self.neutral), "neutral"
-            for other, opts, ovis, _ in banks:
+        for gid, pts, vis, threshold, ws in banks:
+            nearest, nearest_gid = separation((pts, vis), self.neutral, ws=ws), "neutral"
+            for other, opts, ovis, _, _ in banks:
                 if other != gid:
-                    d = separation((pts, vis), (opts, ovis))
+                    d = separation((pts, vis), (opts, ovis), ws=ws)
                     if d < nearest:
                         nearest, nearest_gid = d, other
             if threshold is None:
@@ -115,7 +131,7 @@ class PoseClassifier:
             self.calibration[gid] = {"threshold": threshold,
                                      "nearest": nearest if np.isfinite(nearest) else None,
                                      "nearest_gid": nearest_gid if np.isfinite(nearest) else None}
-            self.gestures.append((gid, pts, vis, threshold))
+            self.gestures.append((gid, pts, vis, threshold, ws))
 
     @staticmethod
     def _self_spread(bank, max_samples=40):
@@ -143,10 +159,10 @@ class PoseClassifier:
         if feat is None or not self.gestures:
             return None, {}
         pts, vis = feat
-        neutral_d = _knn(distances(pts, vis, *self.neutral))
         matches, best, best_ratio = {}, None, 1.0
-        for gid, bank_pts, bank_vis, threshold in self.gestures:
-            d = _knn(distances(pts, vis, bank_pts, bank_vis))
+        for gid, bank_pts, bank_vis, threshold, ws in self.gestures:
+            neutral_d = _knn(distances(pts, vis, *self.neutral, *ws))
+            d = _knn(distances(pts, vis, bank_pts, bank_vis, *ws))
             ratio = d / threshold
             matches[gid] = float(np.clip(1 - ratio / 2, 0, 1)) if np.isfinite(d) else 0.0
             # Must be inside its threshold and closer to the pose than to "doing nothing".

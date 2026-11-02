@@ -29,9 +29,10 @@ DEFAULT_SETTINGS = {
     "camera_bias": True,          # re-measure gyro drift whenever the camera sees you hold still
     "auto_align": True,           # correct a Joy-Con that slips on the pipe, from moves you make
     "metrics": True,              # keep a local log of what fired (for the Metrics page)
+    "body_moves": True,           # recognize body moves from the webcam alone
 }
 
-KINDS = ("pose", "motion", "jog", "hop")
+KINDS = ("pose", "motion", "move", "jog", "hop")   # move = a body move seen by the webcam alone
 SOURCES = ("webcam", "bow", "melee")
 ACTIONS = ("key", "arm_toggle")
 TOOLTIP_TYPES = ("How to do it", "Spell card", "Recording tips", "Off")
@@ -143,11 +144,11 @@ def new_gesture(kind, source=None, name=None):
     if kind not in KINDS:
         raise ValueError(f"unknown gesture kind {kind!r}")
     if source is None:
-        source = "webcam" if kind in ("pose", "jog", "hop") else "melee"
+        source = "webcam" if kind in ("pose", "move", "jog", "hop") else "melee"
     if kind == "motion" and source not in ROLES:
         raise ValueError(f"motion gestures come from a weapon, not {source!r}")
-    default_names = {"pose": "New pose", "motion": f"New {source} move", "jog": "Jog in place",
-                     "hop": "Hop"}
+    default_names = {"pose": "New pose", "motion": f"New {source} move", "move": "New body move",
+                     "jog": "Jog in place", "hop": "Hop"}
     gesture = {
         "id": "g" + secrets.token_hex(4), "kind": kind, "source": source,
         "name": name or default_names[kind], "key": None, "enabled": True,
@@ -159,4 +160,6 @@ def new_gesture(kind, source=None, name=None):
         gesture.update(hold_ms=None, samples=[])
     elif kind == "motion":
         gesture.update(templates=[], paths=[])
+    elif kind == "move":
+        gesture.update(templates=[])
     return gesture

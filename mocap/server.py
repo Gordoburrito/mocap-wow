@@ -90,6 +90,10 @@ class Server:
         if body.get("clash"):
             self.sim.clash()
             return web.json_response({"ok": True})
+        if body.get("body") is not None:
+            seconds = self.sim_camera.perform_body(body["body"], float(body.get("size", 1.0))) \
+                if self.sim_camera is not None else None
+            return web.json_response({"ok": seconds is not None, "seconds": seconds})
         if body.get("pose") is not None:
             ok = self.sim_camera is not None and self.sim_camera.show(body["pose"], float(body.get("seconds", 2)))
             return web.json_response({"ok": ok})

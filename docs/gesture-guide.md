@@ -52,11 +52,15 @@ each take also records your weapon hand's path, so the same motion done in a cle
 place becomes its own move. Simulated fights, 180 moves each, every move followed by its swing
 back (details in [verification.md](verification.md)):
 
-| Set | Gyro only | Camera + gyro |
-|---|---|---|
-| Melee: the 5 above + high slash, low slash, high thrust, low thrust (9) | 88 right, 47 wrong keys | **179 right, 1 wrong** |
-| Bow: the 5 above + high punch, low punch, wide yank (8) | 97 right, 31 wrong | **177 right, 0 wrong** |
-| Melee 12: + cross-body chop, overhand lob, quick jab | 75 right, 48 wrong | 144 right, 12 wrong |
+| Set | Gyro only | Camera only | Camera + gyro |
+|---|---|---|---|
+| Melee: the 5 above + high slash, low slash, high thrust, low thrust (9) | 87 right, 32 wrong keys | 106 right, 2 wrong | **179 right, 0 wrong** |
+| Bow: the 5 above + high punch, low punch, wide yank (8) | 100 right, 26 wrong | 49 right, 0 wrong | **179 right, 0 wrong** |
+| Melee 12: + cross-body chop, overhand lob, quick jab | 74 right, 41 wrong | 88 right, 11 wrong | 149 right, 6 wrong |
+
+The camera alone can't replace the Joy-Cons for weapon moves: it can't see a twist or a cant, or
+a thrust straight at the screen (the bow's 5 starter moves: 17 of 180 by camera alone, 180 with
+the gyro).
 
 What works:
 
@@ -77,7 +81,13 @@ How it behaves:
 
 **Camera placement:** about 2 m away, chest height, with your hands in frame when raised. It
 copes with a 15 fps camera, motion blur and a misjudged delay; turning 30° away costs some
-accuracy (145/180 in the 9-move set), so face the screen.
+accuracy (140/180 in the 9-move set), so face the screen.
+
+## Moves without a weapon
+
+Body moves (a kick, a duck, a two-handed shove) are seen by the webcam alone and add keys
+without using up weapon moves. On real video the camera alone got 94% of 21 arm actions right
+with 0.1% wrong keys. See [body-moves.md](body-moves.md) for what works.
 
 ## Ranked: what to use and what to avoid
 
@@ -123,10 +133,10 @@ the nearest other move and the margin; under 1.2 means they're too alike.
 
 - **Drift:** whenever the camera sees your weapon hand hold still, the gyro's reading is its
   drift, and it's re-measured. This works even for a large offset the gyro can't notice on its
-  own (simulated 20°/s uncalibrated offset: off by 34°/s without the camera, 2.8°/s with it).
+  own (simulated 20°/s uncalibrated offset: off by 34°/s without the camera, 2.6°/s with it).
 - **A slipped Joy-Con:** moves recognized with the camera agreeing show if the Joy-Con turned on
-  the pipe, and the mount is corrected a few degrees at a time. Simulated 35° slip: 62% of moves
-  right uncorrected, 98% once it corrected itself; with no slip it stays within about 3°.
+  the pipe, and the mount is corrected a few degrees at a time. Simulated 35° slip: 58% of moves
+  right uncorrected, 99% once it corrected itself; with no slip it stays within about 3°.
   Still re-run Calibrate after you remount on purpose.
 
 ## Recording tips

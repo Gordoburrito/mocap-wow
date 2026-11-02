@@ -8,7 +8,7 @@ test (Metrics page) is how you measure it on your setup.
 Re-run any of it:
 
 ```
-.venv/bin/python -m pytest              # 64 tests
+.venv/bin/python -m pytest              # 72 tests
 .venv/bin/python -m lab.stick_lab       # simulated Joy-Con-on-a-pipe physics
 .venv/bin/python -m lab.pick_sets       # which gesture sets survive real fights
 .venv/bin/python -m lab.real_imu_lab    # REAL handheld gyro gestures (6DMG)
@@ -17,6 +17,7 @@ Re-run any of it:
 .venv/bin/python -m lab.utd_landmarks   # once: MediaPipe on the UTD-MHAD videos
 .venv/bin/python -m lab.fusion_real_lab # REAL wrist gyro + video together: camera + gyro
 .venv/bin/python -m lab.fusion_sim_lab  # simulated Joy-Con on a pipe + webcam
+.venv/bin/python -m lab.camera_moves_lab # REAL video alone: body moves, no gyro
 .venv/bin/python -m lab.summarize       # numbers for the app's Metrics page
 ```
 (`pip install -r requirements-lab.txt` first: the labs also need SciPy.)
@@ -151,27 +152,30 @@ weapons and a webcam with MediaPipe-like errors (jitter sized from the real vide
 and lost frames on fast swings, tracking lag, 45 ms delay). 3 fights × 60 moves per set, each
 move followed by its swing back, through the app's pipeline sample by sample.
 
-| Set (180 moves) | Gyro only | Camera + gyro | Camera blocked |
-|---|---|---|---|
-| Melee: slash L, slash R, chop, thrust, circle | 180, 0 wrong keys | 179, 0 | 180, 0 |
-| Melee 9: + high/low slash, high/low thrust | 88, 47 wrong | **179, 1** | 61, 0 |
-| Melee 12: + cross chop, overhand lob, quick jab | 75, 48 wrong | 144, 12 | 28, 0 |
-| Bow: point, punch, yank, cant, twist | 177, 0 | 180, 0 | 178, 0 |
-| Bow 8: + high/low punch, wide yank | 97, 31 wrong | **177, 0** | 67, 0 |
+| Set (180 moves) | Gyro only | Camera only | Camera + gyro | Camera blocked |
+|---|---|---|---|---|
+| Melee: slash L, slash R, chop, thrust, circle | 176, 0 wrong keys | 120, 9 | **180, 0** | 178, 0 |
+| Melee 9: + high/low slash, high/low thrust | 87, 32 wrong | 106, 2 | **179, 0** | 55, 0 |
+| Melee 12: + cross chop, overhand lob, quick jab | 74, 41 wrong | 88, 11 | 149, 6 | 29, 0 |
+| Bow: point, punch, yank, cant, twist | 180, 0 | 17, 0 | **180, 0** | 178, 0 |
+| Bow 8: + high/low punch, wide yank | 100, 26 wrong | 49, 0 | **179, 0** | 61, 0 |
 
-The webcam's quality barely matters for the 9-move melee set (179/180 at 30 fps, at 15 fps, with
-twice the blur and lost frames, or with the delay misjudged by 80 ms). Turning 30° away drops it
-to 145/180 with 3 wrong keys; a much sloppier player gets 166/180 with 0 wrong.
+"Camera only" is the body-move recognizer on the webcam alone (section 6b): enough for big
+position changes, not for twists, cants or thrusts at the screen.
+
+The webcam's quality barely matters for the 9-move melee set (178–179/180 at 30 or 15 fps, with
+twice the blur and lost frames, or with the delay misjudged by 80 ms, all with 0 wrong keys).
+Turning 30° away drops it to 140/180 (0 wrong); a much sloppier player gets 166/180 (1 wrong).
 
 **Keeping the gyro calibrated from the body:**
 
-- A Joy-Con slipped 35° on the pipe: uncorrected, 62.5% of the last 40 of 120 moves right. With
-  the auto mount correction learning from moves the camera agreed on: 98.3% from the first 40
-  moves on, mount left 2.7° off. Learning from the gyro alone: 81.7% by the end, 15.9° off. With
-  no slip it stayed within 2.8°.
+- A Joy-Con slipped 35° on the pipe: uncorrected, 58.3% of the last 40 of 120 moves right. With
+  the auto mount correction learning from moves the camera agreed on: 99.2% from the first 40
+  moves on, mount left 3.9° off. Learning from the gyro alone: 74.2% by the end, 26.5° off. With
+  no slip it stayed within 3.1°.
 - A never-calibrated gyro, ~20°/s offset drifting up 40% as it warms: the gyro-only tracker never
-  sees "still" and ends 34.1°/s off (87.5% of moves right); with camera stillness, 2.8°/s off and
-  100% right.
+  sees "still" and ends 33.8°/s off (79.3% of moves right); with camera stillness, 2.6°/s off and
+  97.5% right.
 
 The simulation caught four real bugs, all fixed:
 1. A held-back move didn't lock out its own swing back, so the return fired the mirror move
@@ -182,6 +186,54 @@ The simulation caught four real bugs, all fixed:
    that no other move is near its threshold on that swing.
 4. Gyro drift corrections were logged at noise level (1000 lines a minute); only real
    corrections (≥ 1°/s) count now.
+
+Building body moves caught three more:
+1. Starting a capture as a body move still let the pose recorder add frames as takes (and the
+   weapon recorder could too). Each recorder now ignores captures meant for another kind.
+2. The play log's camera-outcome label overwrote the record's kind, so weapon decisions were
+   logged as "agreed" instead of "motion".
+3. The simulated webcam's jitter jumped independently every frame, so a still body looked like
+   it was moving (real trackers drift); it now drifts, and the numbers above use it.
+
+## 6b. Body moves from the webcam alone (UTD-MHAD)
+
+The same 8 people, all 27 actions (incl. jog, walk, sit to stand, stand to sit, lunge, squat),
+the RGB video only, through the app's body-move segmenter and recognizer
+(`mocap/camera_moves.py`). Per person: 3 trials recorded, the 4th tested, rotated. Rejection on.
+
+| | Right | Wrong key | Missed |
+|---|---|---|---|
+| 21 arm actions | **94.0%** | 0.1% | 5.8% |
+| 6 leg and body moves | 80.0% | 0.5% | 19.5% |
+| All 27 | 90.6% | 0.2% | 9.2% |
+| All 27, live segmenter (pieces joined as in the app) | 89.7% | 0.3% | 10.0% |
+
+- Against the gyro on the same 21 arm actions: gyro alone 87.8% (0.9% wrong), camera + gyro with
+  the wrist path 90.3% (0.3%), camera alone watching the whole body **94.0% (0.1%)**. Used inside
+  camera + gyro, the whole-body features gave 93.4% (0.1%); that isn't in the app yet (see
+  docs/fusion.md).
+- Every set size from 4 to 27 actions stayed at 91–94% right with at most 0.2% wrong keys. 23
+  of the 27 together stay at 95%+ right with at most 1% wrong keys (out: arm curl, catch, walk
+  in place, stand to sit).
+- Actions nobody recorded fired something 4.9% of the time (the gyro alone on 6DMG: 10.4%).
+- The segmenter cut 77% of clips in one piece, split 21% at a pause (which is why pieces that
+  don't match are kept for 1.5 s and joined), and found nothing in 3%.
+- Weak spots, missed rather than misfired: walking in place (13 of 31) and sitting down (19 of 32).
+- Tuning found on the way: measuring joint speed frame to frame made a 30 fps webcam look three
+  times jitterier than this 15 fps video, so speed is measured over 0.1 s; and real actions run
+  up to ~5 s with wind-ups, so the 3 s cut-off for "that's just fidgeting" became 4 s in the app.
+
+Scopes (judging a move on one body part): on the same video, letting each action pick its own
+scope from its takes (Auto) gave 90.7% right and 0.3% wrong over all 27 (whole body: 90.6%,
+0.2%); on arm actions alone, 93.4% right and 1.0% wrong (whole body: 94.0%, 0.1%). In the
+simulator, 120 kicks, ducks and shoves through the engine with auto scopes (kick → right leg,
+shove → both arms, duck → whole body): 120 right, 0 wrong. That run caught two scoping bugs:
+legs judged from the hips made every duck look like a kick to a leg-scoped move (legs are now
+judged against the floor), and the simulator's duck left the hands hanging in the air.
+
+In the app (`lab/e2e_body_moves.py`, simulated webcam body): kick, duck and shove captured from 5
+takes each, then a sequence of 8 moves fired every key in order, and a shove made while slashing
+sent only the slash. The same flow runs as a test (`tests/test_camera_moves.py`).
 
 ## 7. The whole app, end to end (simulated hardware)
 

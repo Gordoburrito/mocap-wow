@@ -172,8 +172,66 @@ const FIGURE = (paths, extra = "") => `<svg viewBox="0 0 320 180" aria-hidden="t
 const JOG_SVG = FIGURE("M114 42h24M114 42l4 38h16l4-38M118 80l-4 26-2 26M134 80l14 12-6 18M114 42l-10 16 6 16M138 42l10 14-2 18", `<path d="M88 124h20M82 138h20M92 110h16" stroke="#6b7488" stroke-width="3" stroke-linecap="round"/>`);
 const HOP_SVG = `<svg viewBox="0 0 320 180" aria-hidden="true"><ellipse cx="160" cy="166" rx="22" ry="4" fill="#1c2029"/><g transform="translate(34 10)" stroke="#4fd1a5" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="126" cy="24" r="9"/><path d="M114 42h24M114 42l4 38h16l4-38M118 80l-6 20 2 20M134 80l6 20-2 20M114 42l-12 16M138 42l12 16"/></g><path d="M250 130V60M242 68l8-8 8 8" stroke="#6b7488" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
+// A body move: the figure where it started (faint) and ended, with trails for the joints that
+// travelled. Points are [wrist L, wrist R, elbow L, elbow R, ankle L, ankle R, knee L, knee R,
+// body], in shoulder widths from the hips, y up.
+function moveSvg(m, color = "#4fd1a5", w = 320, h = 180) {
+  if (!m || !m.points || !m.points.length) return "";
+  const P = m.points, last = P.length - 1;
+  const at = (f, i) => [P[f][i][0] + (i < 8 ? P[f][8][0] : 0), P[f][i][1] + (i < 8 ? P[f][8][1] : 0)];
+  const body = (f) => {
+    const o = P[f][8], sh = [[o[0] - 0.5, o[1] + 1.35], [o[0] + 0.5, o[1] + 1.35]], hip = [[o[0] - 0.25, o[1]], [o[0] + 0.25, o[1]]];
+    return { sh, hip, head: [o[0], o[1] + 1.8], j: Array.from({ length: 8 }, (_, i) => at(f, i)) };
+  };
+  const frames = [body(0), body(last)];
+  const all = frames.flatMap((b) => [...b.sh, ...b.hip, b.head, ...b.j]).concat(m.active.flatMap((i) => P.map((_, f) => at(f, i))));
+  const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sc = Math.min((w - 40) / Math.max(x1 - x0, 0.5), (h - 30) / Math.max(y1 - y0, 0.5));
+  const X = (p) => (w / 2 + (p[0] - (x0 + x1) / 2) * sc).toFixed(1), Y = (p) => (h / 2 - (p[1] - (y0 + y1) / 2) * sc).toFixed(1);
+  const line = (a, b) => `M${X(a)} ${Y(a)}L${X(b)} ${Y(b)}`;
+  const figure = (b) => [line(b.sh[0], b.sh[1]), line(b.hip[0], b.hip[1]), line([(b.sh[0][0] + b.sh[1][0]) / 2, b.sh[0][1]], [(b.hip[0][0] + b.hip[1][0]) / 2, b.hip[0][1]]),
+    line(b.sh[0], b.j[2]), line(b.j[2], b.j[0]), line(b.sh[1], b.j[3]), line(b.j[3], b.j[1]),
+    line(b.hip[0], b.j[6]), line(b.j[6], b.j[4]), line(b.hip[1], b.j[7]), line(b.j[7], b.j[5])].join("");
+  const head = (b, o) => `<circle cx="${X(b.head)}" cy="${Y(b.head)}" r="${(0.22 * sc).toFixed(1)}" fill="none" stroke="${color}" stroke-width="3" opacity="${o}"/>`;
+  const trails = m.active.map((i) => {
+    const pts = P.map((_, f) => at(f, i));
+    const end = pts[pts.length - 1];
+    return `<polyline points="${pts.map((p) => `${X(p)},${Y(p)}`).join(" ")}" fill="none" stroke="#ff6b3d" stroke-width="2.5" stroke-dasharray="1 5" stroke-linecap="round"/><circle cx="${X(end)}" cy="${Y(end)}" r="4" fill="#ff6b3d"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><g stroke="${color}" stroke-width="3" stroke-linecap="round" fill="none"><path d="${figure(frames[0])}" opacity=".25"/>${head(frames[0], 0.25)}<path d="${figure(frames[1])}"/>${head(frames[1], 1)}</g>${trails}</svg>`;
+}
+
+// What you actually recorded for a body move: your skeleton at the start (faint) and at the
+// furthest point (solid), with trails for the joints the move is judged on. Mirrored, like a mirror.
+function realMoveSvg(r, color = "#4fd1a5", w = 320, h = 180) {
+  if (!r || !r.frames || !r.frames.length) return "";
+  const a = r.aspect || 1.78;
+  const frames = r.frames.map((f) => f.map((p) => [p[0] * a, p[1], p[2]]));
+  const trails = Object.entries(r.trails || {}).map(([j, pts]) => pts.map((p) => [p[0] * a, p[1]]));
+  const all = frames.flatMap((f) => f.filter((p, i) => p[2] > 0.5 && i !== 0 || i === 0)).concat(trails.flat());
+  const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const sc = Math.min((w - 40) / Math.max(maxX - minX, 0.01), (h - 24) / Math.max(maxY - minY, 0.01));
+  const ox = (w - (maxX - minX) * sc) / 2, oy = (h - (maxY - minY) * sc) / 2;
+  const P = (p) => [(w - (ox + (p[0] - minX) * sc)).toFixed(1), (oy + (p[1] - minY) * sc).toFixed(1)];
+  const fig = (f, op, width) => {
+    const bones = BONES.filter(([i, j]) => f[i][2] > 0.5 && f[j][2] > 0.5).map(([i, j]) => { const A = P(f[i]), B = P(f[j]); return `M${A[0]} ${A[1]}L${B[0]} ${B[1]}`; }).join("");
+    const hd = P(f[0]), shoulder = Math.hypot(f[11][0] - f[12][0], f[11][1] - f[12][1]) * sc;
+    return `<g opacity="${op}" stroke="${color}" stroke-width="${width}" stroke-linecap="round" fill="none"><path d="${bones}"/><circle cx="${hd[0]}" cy="${hd[1]}" r="${Math.max(5, shoulder * 0.28).toFixed(1)}"/></g>`;
+  };
+  const solid = frames.length > 1 ? frames[1] : frames[0];
+  const figs = (frames.length > 1 ? fig(frames[0], 0.25, 3) : "") + fig(solid, 1, 3.5);
+  const tr = trails.map((pts) => { const end = P(pts[pts.length - 1]), far = P(pts.reduce((m, p) => (Math.hypot(p[0] - pts[0][0], p[1] - pts[0][1]) > Math.hypot(m[0] - pts[0][0], m[1] - pts[0][1]) ? p : m), pts[0]));
+    return `<polyline points="${pts.map((p) => P(p).join(",")).join(" ")}" fill="none" stroke="#ff6b3d" stroke-width="2.5" stroke-dasharray="1 5" stroke-linecap="round"/><circle cx="${far[0]}" cy="${far[1]}" r="4" fill="#ff6b3d"/>`; }).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${figs}${tr}</svg>`;
+}
+
+const SCOPE_LABEL = { auto: "Auto", whole: "Whole body", left_arm: "Left arm", right_arm: "Right arm", arms: "Both arms", left_leg: "Left leg", right_leg: "Right leg", legs: "Both legs", body: "Whole-body position", head: "Head", weapon: "Weapon only (gyro)" };
+
 function frameSvg(g) {
   if (g.kind === "motion") return traceSvg(g.trace, SOURCE_COLOR[g.source]);
+  if (g.kind === "move") return g.real ? realMoveSvg(g.real) : moveSvg(g.move);
   if (g.kind === "pose") return skeletonSvg(g.skeleton, g.aspect, "#4fd1a5");
   if (g.kind === "jog") return JOG_SVG;
   if (g.kind === "hop") return HOP_SVG;
@@ -188,7 +246,7 @@ function spark(values, color, w = 100, h = 36, dashed = false) {
 }
 
 function kindLabel(g) {
-  return g.kind === "motion" ? `${cap(g.source)} · motion` : g.kind === "pose" ? "Pose" : g.kind === "jog" ? "Movement · held" : "Movement";
+  return g.kind === "motion" ? `${cap(g.source)} · motion` : g.kind === "move" ? "Body move · webcam" : g.kind === "pose" ? "Pose" : g.kind === "jog" ? "Movement · held" : "Movement";
 }
 
 function firesText(g) {
@@ -201,12 +259,14 @@ function firesText(g) {
 const DEFAULT_HOW = {
   motion: ["Do it the way you recorded it, then pause.", "Speed and force don't matter; direction does."],
   pose: ["Get into the pose and hold it for a moment.", "Drop it before doing it again."],
+  move: ["Do it the way you recorded it, then settle for a moment.", "Big and clear beats fast."],
   jog: ["Jog on the spot to keep running.", "Stop and you stop."],
   hop: ["A small hop, both feet off the floor."],
 };
 const REC_TIPS = {
   motion: ["Do it 5 times, pausing between takes.", "Grip the weapon the same way every take.", "Fires by accident? Record moves to ignore."],
   pose: ["Stand where you play, upper body in frame.", "Hold still through the 2 s capture.", "Fires by accident? Record more neutral."],
+  move: ["Do it 5 times, settling for a second between takes.", "Whole body in frame, weapons still.", "Fires by accident? Press \"Wasn't me\"."],
   jog: ["Nothing to record: it watches your knees.", "Needs your knees in frame."],
   hop: ["Nothing to record: it watches your hips.", "Needs your hips in frame."],
 };
@@ -237,11 +297,12 @@ function category(g) {
   if (g.action === "arm_toggle") return "system";
   if (g.kind === "jog" || g.kind === "hop") return "movement";
   if (g.kind === "pose") return "poses";
+  if (g.kind === "move") return "body";
   return g.source;
 }
 
 function libraryPage() {
-  const cats = { all: S.gestures.length, melee: 0, bow: 0, poses: 0, movement: 0, system: 0 };
+  const cats = { all: S.gestures.length, melee: 0, bow: 0, body: 0, poses: 0, movement: 0, system: 0 };
   S.gestures.forEach((g) => cats[category(g)]++);
   const q = ui.search.trim().toLowerCase();
   const shown = S.gestures.filter((g) => (ui.filter === "all" || category(g) === ui.filter) && (!q || `${g.name} ${g.casts}`.toLowerCase().includes(q)));
@@ -256,11 +317,12 @@ function libraryPage() {
       <label class="search">${'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>'}<input type="text" data-change="search" data-live="search" placeholder="Find a move or spell" aria-label="Find a move or spell" value="${esc(ui.search)}"></label>
       <label class="inline muted">Tooltips <select data-change="setting" data-k="tooltip_type">${["How to do it", "Spell card", "Recording tips", "Off"].map((t) => `<option ${S.settings.tooltip_type === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>
     </div></div>
-  <div class="filters" role="group" aria-label="Filter">${filterBtn("all", "All")}${filterBtn("melee", "Melee", "melee")}${filterBtn("bow", "Bow", "bow")}${filterBtn("poses", "Poses", "pose")}${filterBtn("movement", "Movement", "move")}${filterBtn("system", "System", "live")}</div>
+  <div class="filters" role="group" aria-label="Filter">${filterBtn("all", "All")}${filterBtn("melee", "Melee", "melee")}${filterBtn("bow", "Bow", "bow")}${filterBtn("body", "Body moves", "pose")}${filterBtn("poses", "Poses", "pose")}${filterBtn("movement", "Movement", "move")}${filterBtn("system", "System", "live")}</div>
   ${empty}
   <div class="grid" id="tiles">${tiles}</div>
   <div class="toolbar"><span class="muted">Add without capturing:</span>
     <button class="small" data-act="capture-pose">+ Pose</button>
+    <button class="small" data-act="capture-move">+ Body move</button>
     <button class="small" data-act="add" data-kind="jog">+ Jog in place</button>
     <button class="small" data-act="add" data-kind="hop">+ Hop</button></div>`;
 }
@@ -272,9 +334,9 @@ function tileHtml(g) {
   const statLine = isNew ? `<span class="stat" style="color:#ffb3a1">Just captured</span>`
     : !g.ready ? `<span class="stat" style="color:var(--warn)">${g.count ? "Needs a key" : "Not recorded yet"}</span>`
     : `<span class="stat">Fired ${st.fired}× this session${st.near ? ` · ${st.near} near-miss` : ""}</span>`;
-  const src = g.kind === "motion" ? g.source : g.kind === "pose" ? "pose" : "move";
+  const src = g.kind === "motion" ? g.source : g.kind === "pose" || g.kind === "move" ? "pose" : "move";
   return `<a href="#/gesture/${g.id}" class="tile ${isNew ? "new" : ""} ${g.enabled ? "" : "off"}" data-gid="${g.id}">
-    <div class="frame">${frameSvg(g)}<span class="badge"><i class="dot ${src}"></i>${esc(g.kind === "motion" ? cap(g.source) : g.kind === "pose" ? (g.action === "arm_toggle" ? "System pose" : "Pose") : "Movement")}</span>
+    <div class="frame">${frameSvg(g)}<span class="badge"><i class="dot ${src}"></i>${esc(g.kind === "motion" ? cap(g.source) + (g.scope === "weapon" ? " · gyro only" : "") : g.kind === "move" ? `Body move · ${(SCOPE_LABEL[g.scope_effective] || "").toLowerCase()}` : g.kind === "pose" ? (g.action === "arm_toggle" ? "System pose" : "Pose") + (g.scope && g.scope !== "whole" ? ` · ${SCOPE_LABEL[g.scope].toLowerCase()}` : "") : "Movement")}</span>
       ${isNew ? `<span class="badge right new">NEW</span>` : warn ? `<span class="badge right warn">close to ${esc(g.calibration.nearest)}</span>` : ""}</div>
     <div class="tile-body"><div class="tile-row"><b>${esc(g.name)}</b>${keyCap(g)}</div>
       <span class="casts">${esc(g.casts || "")}</span>${statLine}</div>
@@ -299,6 +361,7 @@ function gesturePage(id) {
     <div class="toolbar">
       ${g.action === "arm_toggle" ? "" : `<button class="key big ${listening ? "listening" : ""}" data-act="rebind" data-id="${g.id}" title="Click, then press the key you bound in WoW">${listening ? "Press a key…" : g.key_label && g.key_label !== "—" ? esc(g.key_label) : "Set key"}</button>`}
       ${g.kind === "pose" ? `<select data-change="gfield" data-k="action" aria-label="What it does"><option value="key" ${g.action === "key" ? "selected" : ""}>Sends a key</option><option value="arm_toggle" ${g.action === "arm_toggle" ? "selected" : ""}>Toggles armed</option></select>` : ""}
+      ${scopeSelect(g)}
       <label class="inline muted"><input type="checkbox" data-change="gcheck" data-k="enabled" ${g.enabled ? "checked" : ""}> Enabled</label>
     </div></div>
   <div class="cols">
@@ -306,6 +369,16 @@ function gesturePage(id) {
     <div class="narrow">${firingPanel(g, st)}${tooltipPanel(g)}
       <div class="toolbar"><button class="danger" data-act="delete" data-id="${g.id}">${ui.deleteArmed === g.id ? "Click again to delete" : "Delete gesture"}</button></div></div>
   </div>`;
+}
+
+// Which part of you a gesture is judged on. "Auto" (body moves) = the parts that moved in your takes.
+function scopeSelect(g) {
+  const opts = g.kind === "move" ? ["auto", "whole", "left_arm", "right_arm", "arms", "left_leg", "right_leg", "legs", "body"]
+    : g.kind === "pose" ? ["whole", "left_arm", "right_arm", "arms", "left_leg", "right_leg", "legs", "head"]
+    : g.kind === "motion" ? ["auto", "weapon"] : null;
+  if (!opts) return "";
+  const label = (o) => o === "auto" ? (g.kind === "move" ? `Auto: ${SCOPE_LABEL[g.auto_scope || "whole"].toLowerCase()}` : "Weapon + where your hand is") : SCOPE_LABEL[o];
+  return `<label class="inline muted" title="Judge it on this part of you only; the rest of your body doesn't matter">Judged on <select data-change="gfield" data-k="scope" aria-label="Judged on">${opts.map((o) => `<option value="${o}" ${(g.scope || (g.kind === "pose" ? "whole" : "auto")) === o ? "selected" : ""}>${esc(label(o))}</option>`).join("")}</select></label>`;
 }
 
 function takesPanel(g, color) {
@@ -317,6 +390,14 @@ function takesPanel(g, color) {
     return `<section class="panel"><h2>Recording <span class="muted" style="font-weight:400;font-size:12px">${g.count} frames</span></h2>
       <div class="chart" style="max-width:520px">${g.skeleton ? skeletonSvg(g.skeleton, g.aspect, "#4fd1a5") : `<p class="muted">Not recorded yet.</p>`}</div>
       <div class="toolbar"><button data-act="capture-for" data-id="${g.id}">● ${g.count ? "Add more" : "Record"}</button>${g.count ? `<button class="ghost" data-act="clear" data-id="${g.id}">Clear</button>` : ""}</div></section>`;
+  }
+  if (g.kind === "move") {
+    const takes = g.takes || [];
+    return `<section class="panel"><h2><span>Takes <span class="muted" style="font-weight:400;font-size:12px">${takes.length} recorded</span></span>
+      <span class="toolbar"><button class="small" data-act="capture-for" data-id="${g.id}">● Add takes</button>${takes.length ? `<button class="small ghost" data-act="rerecord" data-id="${g.id}">Re-record all</button>` : ""}</span></h2>
+      ${g.real ? `<div class="frame" style="border-radius:10px;max-width:520px">${realMoveSvg(g.real)}</div><span class="muted" style="font-size:12px">Your recording: faint where you started, solid at the furthest point, dotted trails for what it's judged on (${esc(SCOPE_LABEL[g.scope_effective].toLowerCase())}).</span>`
+        : g.move ? `<div class="frame" style="border-radius:10px;max-width:520px">${moveSvg(g.move)}</div><span class="muted" style="font-size:12px">Your average take: faint figure where it starts, solid where it ends, dotted trails for the joints that travel.</span>` : `<p class="muted">Not recorded yet.</p>`}
+      <div class="takes">${takes.map((t, i) => `<div class="take">${g.take_real?.[i] ? `<div style="height:96px">${realMoveSvg(g.take_real[i], "#4fd1a5", 96, 96)}</div>` : spark(t, "#4fd1a5", 100, 36)}<div class="row between" style="font-size:12px"><span>Take ${i + 1}</span><button class="small ghost" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button></div></div>`).join("")}</div></section>`;
   }
   const takes = g.takes || [];
   const n = takes[0]?.length || 24;
@@ -413,6 +494,7 @@ function enginePage() {
       <section class="panel"><h2>Recognizers</h2>
         <div class="switch-row"><span><b>Poses</b><small>Webcam. Matches your body against your recordings, measured from the shoulders so distance doesn't matter.</small></span><span class="muted" style="font-size:12px">always on</span></div>
         <div class="switch-row"><span><b>Weapon motions</b><small>Bow and melee. Matched by direction at any speed. Locked out for ${s.lockout_ms} ms after a hit so the return stroke can't fire.</small></span><span class="muted" style="font-size:12px">always on</span></div>
+        ${sw("body_moves", "Body moves", "Webcam only, no weapon: a kick, a duck, a two-handed shove. Matched on where your hands, feet and body went. A body move made while a weapon motion fires is left to the weapon.")}
         ${sw("jog_enabled", "Jog in place", "Feet or knees take turns lifting → holds a key down.", true)}
         ${sw("hop_enabled", "Hop", "Hips rise and land quickly → one key press.", true)}
         ${sw("clash_capture", "Weapon clash", "Tap the shafts together (not the tips, where the Joy-Cons are) to open quick capture.")}
@@ -533,17 +615,25 @@ function captureHtml(c, inHud) {
         <div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:150px" role="img" aria-label="Your takes so far">${lines}</svg></div>
         <div class="row between"><div class="big-count"><b>${c.count}</b><span class="muted">of ${c.target} takes</span></div><div class="dots ${c.source}">${Array.from({ length: c.target }, (_, i) => `<i class="${i < c.count ? "on" : ""}"></i>`).join("")}</div></div>
         <p class="soft">${esc(c.message || (c.count ? "Again. Pause between takes." : "Do the move!"))}</p>`;
+    } else if (c.kind === "move") {
+      const n = (c.traces[0] || []).length || 16, W = 448, H = 150;
+      const max = Math.max(0.01, ...c.traces.flat());
+      const lines = c.traces.map((t, i) => `<polyline points="${t.map((v, j) => `${(j / Math.max(1, t.length - 1)) * W},${H - 8 - (v / max) * (H - 20)}`).join(" ")}" fill="none" stroke="#4fd1a5" stroke-opacity="${i === c.traces.length - 1 ? 1 : 0.35}" stroke-width="${i === c.traces.length - 1 ? 4 : 2}"/>`).join("");
+      body = `<div class="note info row"><i class="dot pose"></i><span style="flex:1"><b>Body move</b> · webcam only</span><span class="pill">move</span></div>
+        <div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:150px" role="img" aria-label="How fast you moved in each take">${lines}</svg></div>
+        <div class="row between"><div class="big-count"><b>${c.count}</b><span class="muted">of ${c.target} takes</span></div><div class="dots">${Array.from({ length: c.target }, (_, i) => `<i class="${i < c.count ? "on" : ""}"></i>`).join("")}</div></div>
+        <p class="soft">${esc(c.message || (c.count ? "Again. Settle for a second between takes." : "Do the move! Keep the weapons still."))}</p>`;
     } else {
-      body = `<div class="note info">Do the move with either weapon, or get into a pose and hold it. The engine works out which.</div><div class="countdown" style="font-size:40px">Go!</div>
-        <button data-act="capture-pose">It's a pose →</button>`;
+      body = `<div class="note info">Do the move with either weapon, get into a pose and hold it, or do a body move with the weapons still. The engine works out which.</div><div class="countdown" style="font-size:40px">Go!</div>
+        <div class="row"><button data-act="capture-pose">It's a pose →</button><button data-act="capture-move">It's a body move →</button></div>`;
     }
-    const finish = c.kind === "motion" && c.count >= 3 && c.count < c.target ? `<button data-act="capture-finish">Finish with ${c.count} takes →</button>` : "";
+    const finish = (c.kind === "motion" || c.kind === "move") && c.count >= 3 && c.count < c.target ? `<button data-act="capture-finish">Finish with ${c.count} takes →</button>` : "";
     return `${title}${steps}${body}<div class="row between" style="border-top:1px solid #1e2330;padding-top:14px"><span class="muted" style="font-size:12px">Nothing fires while capturing.</span>${finish}</div>`;
   }
   // bind
   const listening = !c.key;
   return `${title}${steps}
-    <div class="note info row"><i class="dot ${c.kind === "motion" ? c.source : "pose"}"></i><span style="flex:1"><b>${c.count} ${c.kind === "pose" ? "frames" : "takes"}</b> · ${esc(c.kind === "motion" ? cap(c.source) + " motion" : "Pose")}</span></div>
+    <div class="note info row"><i class="dot ${c.kind === "motion" ? c.source : "pose"}"></i><span style="flex:1"><b>${c.count} ${c.kind === "pose" ? "frames" : "takes"}</b> · ${esc(c.kind === "motion" ? cap(c.source) + " motion" : c.kind === "move" ? "Body move" : "Pose")}${c.kind === "move" && c.auto_scope ? ` · judged on: <b>${esc(SCOPE_LABEL[c.auto_scope].toLowerCase())}</b> (what moved; change it on its page)` : ""}</span></div>
     <div class="keybox"><div class="row between"><b>Key</b>${listening ? `<span style="font-size:12px;color:#ff9a76">● Listening</span>` : ""}</div>
       <span class="soft" style="font-size:13px">Press the key this move should send: the one you bound in WoW.${inHud ? " (Works while WoW has focus.)" : ""}</span>
       <div class="row">${c.key ? `<span class="key huge">${esc(c.key_label)}</span>` : `<span class="key huge listening">…</span>`}</div>
@@ -677,6 +767,7 @@ const actions = {
   arm: () => send({ op: "set_armed", value: !S.armed }),
   capture: () => { unlockAudio(); send({ op: "capture_start", trigger: "ui" }); },
   "capture-pose": () => { unlockAudio(); send({ op: "capture_start", trigger: "ui", kind: "pose" }); },
+  "capture-move": () => { unlockAudio(); send({ op: "capture_start", trigger: "ui", kind: "move" }); },
   "capture-for": (el) => { unlockAudio(); send({ op: "capture_start", trigger: "ui", id: el.dataset.id }); },
   "capture-cancel": () => send({ op: "capture_cancel" }),
   "capture-finish": () => send({ op: "capture_finish" }),
@@ -845,6 +936,7 @@ function metricsPage() {
         ${ses.camera_wait_ms?.median != null ? `<span class="muted" style="font-size:12px">Waited for the camera on ${Math.round((ses.camera_wait_ms.share || 0) * 100)}% of motions, typically ${ses.camera_wait_ms.median} ms.</span>` : ""}
         <div class="cols" style="gap:16px"><div class="wide stack"><b style="font-size:13px">Keys sent</b>${barRows(ses.fires, BAR.ok)}</div>
           <div class="narrow stack"><b style="font-size:13px">Why moves didn't fire</b>${barRows(ses.reasons, BAR.none)}</div></div>
+        ${Object.keys(ses.body_moves || {}).length ? `<span class="muted" style="font-size:12px">Body moves (webcam only): ${Object.entries(ses.body_moves).map(([k, v]) => `${k} ${v}`).join(", ")}</span>` : ""}
         <div class="row wrap muted" style="font-size:12px;gap:14px"><span>Gyro drift corrected from camera stillness: <b class="soft">${ses.calibration?.camera_bias || 0}×</b></span><span>Mount auto-fix steps: <b class="soft">${ses.calibration?.auto_align || 0}</b></span><span>Your corrections: <b class="soft">${Object.entries(ses.corrections || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}</b></span><span>Held back: <b class="soft">${Object.entries(ses.held || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "nothing"}</b></span></div>
       </section>
       <section class="panel"><h2>Day by day <span class="muted" style="font-size:12px;font-weight:400">${m.enabled ? "from your play log" : "play log is off"}</span></h2>${historyChart(hist)}</section>
@@ -898,10 +990,16 @@ function labPanel(lab) {
       ${f.largest?.gyro ? `<div class="note ok">At 95%+ right and ≤1% wrong keys: <b>${f.largest.gyro}</b> moves with the gyro alone, <b>${f.largest.fused}</b> with camera + gyro.</div>` : ""}
       ${f.hand ? `<span class="muted" style="font-size:12px">Found the weapon hand from one move ${f.hand.single_move_correct_pct}% of the time, from three ${f.hand.three_moves_correct_pct}%.</span>` : ""}</section>`);
   }
+  if (lab.camera_only) {
+    const c = lab.camera_only;
+    out.push(`<section class="panel"><h2>Body moves: camera alone on real people</h2><p class="muted" style="font-size:12px;margin:0">${esc(c.source)}</p>
+      ${c.rows.map((r) => `<div class="barrow"><span>${esc(r.label)}</span>${tri(r.correct, r.wrong, r.rejected)}<b>${r.correct}%</b></div>`).join("")}
+      <span class="muted" style="font-size:12px">${c.largest} of 27 actions together stay at 95%+ right with at most 1% wrong keys. Moves never recorded fired something ${c.open_set_false_fire}% of the time.</span></section>`);
+  }
   if (lab.sim_fusion) {
     const f = lab.sim_fusion;
     out.push(`<section class="panel"><h2>Joy-Con on a pipe + webcam (simulated)</h2>
-      ${f.sets.map((s) => `<b style="font-size:12px">${esc(s.label)}</b><div class="barrow"><span>Gyro</span>${stackBar([[s.gyro.correct_pct, BAR.ok, "right"]])}<b>${s.gyro.correct}/${s.gyro.moves}</b></div><div class="barrow"><span>Both</span>${stackBar([[s.fused.correct_pct, BAR.ok, "right"]])}<b>${s.fused.correct}/${s.fused.moves}</b></div>`).join("")}
+      ${f.sets.map((s) => `<b style="font-size:12px">${esc(s.label)}</b><div class="barrow"><span>Gyro</span>${stackBar([[s.gyro.correct_pct, BAR.ok, "right"]])}<b>${s.gyro.correct}/${s.gyro.moves}</b></div>${s.camera_only ? `<div class="barrow"><span>Camera</span>${stackBar([[s.camera_only.correct_pct, BAR.ok, "right"]])}<b>${s.camera_only.correct}/${s.camera_only.moves}</b></div>` : ""}<div class="barrow"><span>Both</span>${stackBar([[s.fused.correct_pct, BAR.ok, "right"]])}<b>${s.fused.correct}/${s.fused.moves}</b></div>`).join("")}
       ${f.auto_align ? `<div class="note info">Joy-Con slipped 35° on the pipe: ${f.auto_align["no correction"]?.last_40_correct_pct}% right uncorrected, ${f.auto_align["auto-align, camera + gyro decide"]?.last_40_correct_pct}% after auto-fixing itself from your moves.</div>` : ""}
       ${f.bias ? `<div class="note info">Uncalibrated gyro drifting ~20°/s: gyro alone still off by ${f.bias["gyro-only still tracker"]?.offset_error_at_end_deg_s}°/s, with camera stillness ${f.bias["+ camera stillness"]?.offset_error_at_end_deg_s}°/s.</div>` : ""}</section>`);
   }

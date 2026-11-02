@@ -7,6 +7,7 @@ you set in WoW, and it's live.
 
 - **Capture on the fly:** tap the weapon shafts together (or press ⌥C), do the move five
   times, press the key. No training step and no config files.
+- **Body moves with no weapon:** a kick, a duck, a two-handed shove, seen by the webcam alone.
 - **Camera + gyro together:** the gyro knows exactly how the weapon turns; the camera knows
   where your hand is. Combined, the same swing at head height and at the waist can be two
   different moves, the camera keeps the gyro calibrated, and lookalike moves stop misfiring.
@@ -14,6 +15,16 @@ you set in WoW, and it's live.
   game. Write and change your macros in WoW whenever you like.
 - **Metrics:** an accuracy test on your own moves and hardware, a play log, and the data from
   how it was tested.
+
+## Start it
+
+- **The app:** open **Mocap** from Applications (or Spotlight: ⌘Space, type "Mocap"). A window
+  opens with the setup UI and a ⚔ appears in the menu bar. Closing the window keeps it running
+  there; quit from the ⚔ menu or with ⌘Q.
+- **From the source folder:** `./run.sh` (opens the UI in your browser), or
+  `./run.sh --overlay` for the HUD panel beside the game.
+- **Try it without hardware:** `./run.sh --sim --sim-camera --dry-run` gives you two simulated
+  Joy-Cons and a simulated webcam (drive them with `POST /api/sim`, see CONTRIBUTING.md).
 
 ## Install
 
@@ -70,13 +81,27 @@ whether key output is allowed.
 - The HUD shows what fired. **"Wasn't me"** marks a wrong fire and teaches it to ignore that
   move; near misses ask "loosen it?" or "ignore that move?".
 
+## Body moves (webcam only)
+
+Capture → **It's a body move**, do it 5 times with the weapons still, press the key. A kick, a
+stomp, a duck, a two-handed shove, a wave: the webcam cuts each one out of the video and matches
+where your hands, elbows, feet, knees and body went. Each move is judged only on the part of you
+that does it (auto, or pick: an arm, a leg, both, whole body), so raising your arm works whatever
+your legs are doing; poses can be scoped the same way, and weapon motions can ignore the camera.
+Tiles show your actual recorded skeleton.
+
+On real people (UTD-MHAD video, 8 people), the camera alone got **94.0% of 21 arm actions right
+with 0.1% wrong keys**, better than a wrist gyro (87.8%, 0.9% wrong), and 23 of 27 actions
+together stay at 95%+ right. Weapon moves still need the Joy-Cons: the camera can't see a twist
+or a thrust at the screen. Details: [docs/body-moves.md](docs/body-moves.md).
+
 ## Camera + gyro
 
 When the webcam can see your weapon hand:
 
 - **More moves.** Moves are matched on the gyro *and* the hand's path. In the simulator, a bow
-  with 8 moves (incl. high and low punches) went from 97/180 right with 31 wrong keys on the
-  gyro alone to 177/180 with none; melee with 9 moves from 88/180 (47 wrong) to 179/180 (1).
+  with 8 moves (incl. high and low punches) went from 100/180 right with 26 wrong keys on the
+  gyro alone to 179/180 with none; melee with 9 moves from 87/180 (32 wrong) to 179/180 (0).
   On real people (UTD-MHAD: wrist gyro + video, 8 people, 21 arm actions): 90.3% right with
   0.3% wrong keys, against 87.8% and 0.9% for the gyro alone.
 - **No waiting when it's obvious.** If the gyro alone is sure, the key goes out at once.
@@ -84,7 +109,7 @@ When the webcam can see your weapon hand:
 - **It keeps the gyro calibrated.** When the camera sees your hand hold still, it re-measures
   gyro drift, even drift too large for the gyro to notice itself. Moves recognized with the
   camera agreeing reveal a Joy-Con that slipped on the pipe; it's corrected a few degrees at a
-  time (simulated 35° slip: 62% → 98% of moves right).
+  time (simulated 35° slip: 58% → 99% of moves right).
 - **It figures out the setup.** Which hand holds which weapon, and how far the camera lags the
   gyro, are learned from your moves.
 - **If the camera can't see you,** moves that need it (e.g. a high vs a low slash) are held

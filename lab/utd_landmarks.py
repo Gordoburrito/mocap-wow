@@ -1,4 +1,4 @@
-"""Run MediaPipe pose (the model the app uses) on the UTD-MHAD RGB videos, actions 1-21.
+"""Run MediaPipe pose (the model the app uses) on the UTD-MHAD RGB videos (all 27 actions).
 
     curl -o data/utd/RGB.zip https://personal.utdallas.edu/~kehtar/UTD-MAD/RGB.zip   # 1.1 GB
     .venv/bin/python -m lab.utd_landmarks
@@ -68,7 +68,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(ZIP) as z:
         names = [n for n in z.namelist() if n.endswith(".avi")
-                 and (m := re.search(r"a(\d+)_s\d+_t\d+_color", n)) and int(m.group(1)) <= 21]
+                 and re.search(r"a\d+_s\d+_t\d+_color", n)]
     print(len(names), "videos")
     os.environ.setdefault("GLOG_minloglevel", "2")
     with Pool(6) as pool:
