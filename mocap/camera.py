@@ -10,6 +10,7 @@ MODEL_URL = ("https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
              "pose_landmarker_full/float16/latest/pose_landmarker_full.task")
 PREVIEW_WIDTH = 480
 PREVIEW_FPS = 15
+PHOTO_WIDTH = 640
 
 
 class Camera(threading.Thread):
@@ -87,12 +88,19 @@ class Camera(threading.Thread):
                     self.engine.set_camera(ok=True, fps=round(frames / (now - fps_t0), 1),
                                            message="")
                     frames, fps_t0 = 0, now
-                if self.engine.preview_wanted and now - last_preview >= 1 / PREVIEW_FPS:
+                preview, photos = self.engine.preview_wanted, self.engine.photos_wanted
+                if (preview or photos) and now - last_preview >= 1 / PREVIEW_FPS:
                     last_preview = now
-                    small = cv2.resize(frame, (PREVIEW_WIDTH, int(PREVIEW_WIDTH * h / w)))
-                    ok, jpeg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                    # While capturing, the frames are also the photos of your takes: a bit bigger.
+                    width = PHOTO_WIDTH if photos else PREVIEW_WIDTH
+                    small = cv2.resize(frame, (width, int(width * h / w)), interpolation=cv2.INTER_AREA)
+                    ok, jpeg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 78 if photos else 70])
                     if ok:
-                        self.engine.emit_binary(jpeg.tobytes())
+                        data = jpeg.tobytes()
+                        if preview:
+                            self.engine.emit_binary(data)
+                        if photos:
+                            self.engine.on_photo(now, data)
         finally:
             landmarker.close()
             cap.release()

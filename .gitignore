@@ -4,6 +4,9 @@ __pycache__/
 models/
 # Your recorded gestures and bindings live here.
 profiles/
+# ...and (a checkout that keeps its data next to the code) your play log and take photos.
+/metrics/
+/photos/
 data/
 
 # Mac app build output

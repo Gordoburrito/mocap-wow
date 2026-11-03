@@ -96,6 +96,7 @@ def test_engine_fires_body_moves_and_defers_to_weapons(tmp_path):
     eng = Engine(str(tmp_path / "p.json"), keys, clock=lambda: clock["t"], front_app=lambda: "World of Warcraft",
                  profiles_dir=str(tmp_path))
     eng.settings["require_wow_front"] = False
+    eng.settings["capture_style"] = "free"
     codes = {"kick": ("KeyK", 40), "duck": ("KeyD", 2)}
     for m, (key, _) in codes.items():
         eng.start_capture("ui", kind="move")

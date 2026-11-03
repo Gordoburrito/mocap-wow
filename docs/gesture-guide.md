@@ -133,7 +133,8 @@ the nearest other move and the margin; under 1.2 means they're too alike.
 
 - **Drift:** whenever the camera sees your weapon hand hold still, the gyro's reading is its
   drift, and it's re-measured. This works even for a large offset the gyro can't notice on its
-  own (simulated 20°/s uncalibrated offset: off by 34°/s without the camera, 2.6°/s with it).
+  own (simulated 20°/s uncalibrated offset during non-stop play: off by 34°/s without the camera,
+  11°/s with it). It waits for a swing to settle first, so a slow swing back isn't taken for drift.
 - **A slipped Joy-Con:** moves recognized with the camera agreeing show if the Joy-Con turned on
   the pipe, and the mount is corrected a few degrees at a time. Simulated 35° slip: 58% of moves
   right uncorrected, 99% once it corrected itself; with no slip it stays within about 3°.

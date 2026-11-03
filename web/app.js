@@ -236,9 +236,71 @@ function realMoveSvg(r, color = "#4fd1a5", w = 320, h = 180) {
   return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${figs}${tr}</svg>`;
 }
 
+// A real photo of you doing it, with your skeleton drawn on top: both mirrored (like a mirror)
+// and cropped to you. With every frame of a take, hovering plays it (start → peak → end).
+function photoSvg(rec, { w = 320, h = 180, all = false, trails = true, color = "#4fd1a5", label = "" } = {}) {
+  if (!rec || !rec.frames || !rec.frames.length) return "";
+  const a = rec.aspect || 1.78;
+  const peak = Math.min(rec.peak || 0, rec.frames.length - 1);
+  const shown = all ? rec.frames.map((_, i) => i) : [peak];
+  const M = (p) => [a - p[0] * a, p[1]];                       // mirrored picture coordinates
+  const pts = [];
+  for (const i of shown) (rec.frames[i].lm || []).forEach((p, j) => { if ((j === 0 || j >= 11) && j <= 28 && p[2] > 0.5) pts.push(M(p)); });
+  const tr = trails ? Object.values(rec.trails || {}).filter((t) => t.length > 1).map((t) => t.map(M)) : [];
+  tr.forEach((t) => pts.push(...t));
+  let x0 = 0, x1 = a, y0 = 0, y1 = 1;
+  if (pts.length > 3) {
+    x0 = Math.min(...pts.map((p) => p[0])); x1 = Math.max(...pts.map((p) => p[0]));
+    y0 = Math.min(...pts.map((p) => p[1])); y1 = Math.max(...pts.map((p) => p[1]));
+    const pad = 0.14 * Math.max(x1 - x0, y1 - y0) + 0.02;
+    x0 -= pad; x1 += pad; y0 -= pad * 1.4; y1 += pad;               // room for the head
+  }
+  let bw = x1 - x0, bh = y1 - y0;
+  const r = w / h;
+  if (bw / bh < r) { const nw = bh * r; x0 -= (nw - bw) / 2; bw = nw; } else { const nh = bw / r; y0 -= (nh - bh) / 2; bh = nh; }
+  if (bw <= a) x0 = Math.max(0, Math.min(x0, a - bw));
+  if (bh <= 1) y0 = Math.max(0, Math.min(y0, 1 - bh));
+  const u = bh / h;                                                  // one screen pixel
+  const f = (n) => n.toFixed(4);
+  const skel = (lm) => {
+    if (!lm) return "";
+    const P = lm.map(M);
+    const bones = BONES.filter(([i, j]) => lm[i][2] > 0.5 && lm[j][2] > 0.5).map(([i, j]) => `M${f(P[i][0])} ${f(P[i][1])}L${f(P[j][0])} ${f(P[j][1])}`).join("");
+    const sh = Math.hypot(P[11][0] - P[12][0], P[11][1] - P[12][1]);
+    const head = lm[0][2] > 0.5 ? `<circle cx="${f(P[0][0])}" cy="${f(P[0][1])}" r="${f(Math.max(sh * 0.3, 5 * u))}"/>` : "";
+    const dots = [15, 16, 27, 28].filter((j) => lm[j][2] > 0.5).map((j) => `<circle cx="${f(P[j][0])}" cy="${f(P[j][1])}" r="${f(3 * u)}" fill="${color}" stroke="none"/>`).join("");
+    return `<g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${bones}" stroke="#000" stroke-opacity=".45" stroke-width="5" vector-effect="non-scaling-stroke"/><g stroke="${color}" stroke-width="2.5"><path d="${bones}" vector-effect="non-scaling-stroke"/>${head.replace("<circle", '<circle vector-effect="non-scaling-stroke"')}</g>${dots}</g>`;
+  };
+  const n = shown.length, step = 0.32, dur = (n * step).toFixed(2);
+  const frames = shown.map((i, k) => {
+    const fr = rec.frames[i];
+    const anim = n > 1 ? ` style="--an:fr${n};--dur:${dur}s;--dl:-${(((n - k) % n) * step).toFixed(2)}s"` : "";
+    return `<g class="fr${i === peak ? " pk" : ""}"${anim}><image href="/photos/${esc(fr.file)}" x="0" y="0" width="${f(a)}" height="1" preserveAspectRatio="none" transform="matrix(-1 0 0 1 ${f(a)} 0)"/>${skel(fr.lm)}</g>`;
+  }).join("");
+  const trails2 = tr.map((t) => { const far = t.reduce((m, p) => (Math.hypot(p[0] - t[0][0], p[1] - t[0][1]) > Math.hypot(m[0] - t[0][0], m[1] - t[0][1]) ? p : m), t[0]);
+    return `<polyline points="${t.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="none" stroke="#ff6b3d" stroke-width="2.5" stroke-dasharray="1 5" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="${f(far[0])}" cy="${f(far[1])}" r="${f(4 * u)}" fill="#ff6b3d"/>`; }).join("");
+  // Where the crop runs past the picture, a blurred, darkened copy of it fills in (no black bars).
+  const pk = rec.frames[peak].file, fid = `pb${pk.slice(0, 10)}${w}x${h}`;
+  const sc = Math.max(bw / a, bh), bgw = a * sc, bgh = sc;
+  const fill = x0 < 0 || y0 < 0 || x0 + bw > a || y0 + bh > 1
+    ? `<defs><filter id="${fid}" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${f(bh * 0.04)}"/></filter></defs><g filter="url(#${fid})" opacity=".45"><image href="/photos/${esc(pk)}" x="${f(x0 + (bw - bgw) / 2)}" y="${f(y0 + (bh - bgh) / 2)}" width="${f(bgw)}" height="${f(bgh)}" preserveAspectRatio="none" transform="matrix(-1 0 0 1 ${f(2 * x0 + bw)} 0)"/></g>` : "";
+  return `<svg class="photo${n > 1 ? " flip" : ""}" viewBox="${f(x0)} ${f(y0)} ${f(bw)} ${f(bh)}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${esc(label || "Photo of you doing it, with your skeleton")}"><rect x="${f(x0)}" y="${f(y0)}" width="${f(bw)}" height="${f(bh)}" fill="#07080b"/>${fill}${frames}${trails2}</svg>`;
+}
+
+// One frame (a take's peak) as a photo record.
+const peakRec = (p) => (p ? { aspect: p.aspect, peak: 0, frames: [{ file: p.file, lm: p.lm }], credit: p.credit } : null);
+
+const SAMPLE_NOTE = `<span class="muted" style="font-size:12px">A real person doing something like it, with the skeleton the tracker finds. When you capture your own moves, this shows you, at the peak of each take.</span>`;
+
+function creditLine(rec) {
+  const c = rec && rec.credit;
+  return c ? `<span class="muted credit" style="font-size:11px">Sample photo: ${esc(c.author || "unknown")} · ${esc(c.license || "")} · Wikimedia Commons</span>` : "";
+}
+
 const SCOPE_LABEL = { auto: "Auto", whole: "Whole body", left_arm: "Left arm", right_arm: "Right arm", arms: "Both arms", left_leg: "Left leg", right_leg: "Right leg", legs: "Both legs", body: "Whole-body position", head: "Head", weapon: "Weapon only (gyro)" };
 
 function frameSvg(g) {
+  if (g.photo) return photoSvg(g.photo, { all: true, label: `${g.name}: you doing it` });
   if (g.kind === "motion") return traceSvg(g.trace, SOURCE_COLOR[g.source]);
   if (g.kind === "move") return g.real ? realMoveSvg(g.real) : moveSvg(g.move);
   if (g.kind === "pose") return skeletonSvg(g.skeleton, g.aspect, "#4fd1a5");
@@ -397,16 +459,18 @@ function takesPanel(g, color) {
   }
   if (g.kind === "pose") {
     return `<section class="panel"><h2>Recording <span class="muted" style="font-weight:400;font-size:12px">${g.count} frames</span></h2>
-      <div class="chart" style="max-width:520px">${g.skeleton ? skeletonSvg(g.skeleton, g.aspect, "#4fd1a5") : `<p class="muted">Not recorded yet.</p>`}</div>
+      ${g.photo ? `<div class="frame big-photo">${photoSvg(g.photo, { w: 520, h: 292 })}</div>${creditLine(g.photo)}`
+        : `<div class="chart" style="max-width:520px">${g.skeleton ? skeletonSvg(g.skeleton, g.aspect, "#4fd1a5") : `<p class="muted">Not recorded yet.</p>`}</div>`}
       <div class="toolbar"><button data-act="capture-for" data-id="${g.id}">● ${g.count ? "Add more" : "Record"}</button>${g.count ? `<button class="ghost" data-act="clear" data-id="${g.id}">Clear</button>` : ""}</div></section>`;
   }
   if (g.kind === "move") {
     const takes = g.takes || [];
     return `<section class="panel"><h2><span>Takes <span class="muted" style="font-weight:400;font-size:12px">${takes.length} recorded</span></span>
       <span class="toolbar"><button class="small" data-act="capture-for" data-id="${g.id}">● Add takes</button>${takes.length ? `<button class="small ghost" data-act="rerecord" data-id="${g.id}">Re-record all</button>` : ""}</span></h2>
-      ${g.real ? `<div class="frame" style="border-radius:10px;max-width:520px">${realMoveSvg(g.real)}</div><span class="muted" style="font-size:12px">Your recording: faint where you started, solid at the furthest point, dotted trails for what it's judged on (${esc(SCOPE_LABEL[g.scope_effective].toLowerCase())}).</span>`
+      ${g.photo ? `<div class="frame big-photo">${photoSvg(g.photo, { w: 520, h: 292, all: true })}</div>${g.photo.credit ? SAMPLE_NOTE : `<span class="muted" style="font-size:12px">Your most typical take, with your skeleton on top and dotted trails for what it's judged on (${esc(SCOPE_LABEL[g.scope_effective].toLowerCase())}). Hover to play it.</span>`}${creditLine(g.photo)}`
+        : g.real ? `<div class="frame" style="border-radius:10px;max-width:520px">${realMoveSvg(g.real)}</div><span class="muted" style="font-size:12px">Your recording: faint where you started, solid at the furthest point, dotted trails for what it's judged on (${esc(SCOPE_LABEL[g.scope_effective].toLowerCase())}).</span>`
         : g.move ? `<div class="frame" style="border-radius:10px;max-width:520px">${moveSvg(g.move)}</div><span class="muted" style="font-size:12px">Your average take: faint figure where it starts, solid where it ends, dotted trails for the joints that travel.</span>` : `<p class="muted">Not recorded yet.</p>`}
-      <div class="takes">${takes.map((t, i) => `<div class="take">${g.take_real?.[i] ? `<div style="height:96px">${realMoveSvg(g.take_real[i], "#4fd1a5", 96, 96)}</div>` : spark(t, "#4fd1a5", 100, 36)}<div class="row between" style="font-size:12px"><span>Take ${i + 1}</span><button class="small ghost" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button></div></div>`).join("")}</div></section>`;
+      <div class="takes">${takes.map((t, i) => `<div class="take">${g.take_photos?.[i] ? `<div class="take-photo">${photoSvg(peakRec(g.take_photos[i]), { w: 120, h: 120, trails: false, label: `Take ${i + 1}` })}</div>` : g.take_real?.[i] ? `<div style="height:96px">${realMoveSvg(g.take_real[i], "#4fd1a5", 96, 96)}</div>` : spark(t, "#4fd1a5", 100, 36)}<div class="row between" style="font-size:12px"><span>Take ${i + 1}</span><button class="small ghost" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button></div></div>`).join("")}</div></section>`;
   }
   const takes = g.takes || [];
   const n = takes[0]?.length || 24;
@@ -418,9 +482,10 @@ function takesPanel(g, color) {
   return `<section class="panel">
     <h2><span>Takes <span class="muted" style="font-weight:400;font-size:12px">${takes.length} recorded${consistency !== null ? ` · they agree ${consistency}%` : ""}</span></span>
       <span class="toolbar"><button class="small" data-act="capture-for" data-id="${g.id}">● Add takes</button>${takes.length ? `<button class="small ghost" data-act="rerecord" data-id="${g.id}">Re-record all</button>` : ""}</span></h2>
+    ${g.photo ? `<div class="frame big-photo">${photoSvg(g.photo, { w: 520, h: 292, all: true, color })}</div>${g.photo.credit ? SAMPLE_NOTE : `<span class="muted" style="font-size:12px">Your most typical take, the dotted trail is your ${esc(g.source === "bow" ? "bow" : "weapon")} hand. Hover to play it.</span>`}${creditLine(g.photo)}` : ""}
     ${takes.length ? `<div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:200px" role="img" aria-label="Your takes overlaid"><path d="M0 ${H / 2}H${W}" stroke="#1a1f29"/>${lines}</svg>
       <div class="legend" style="padding-top:6px"><span><i style="background:${color}"></i>Your takes (weapon rotation speed)</span><span><i style="background:${color};opacity:.9"></i>Dashed = odd one out</span></div></div>
-    <div class="takes">${takes.map((t, i) => { const m = g.take_match?.[i] ?? 1; const odd = m < 0.5; return `<div class="take ${odd ? "odd" : ""}">${spark(t, color, 100, 36, odd)}<div class="row between" style="font-size:12px"><span style="${odd ? "color:var(--warn)" : ""}">${odd ? "Odd one out" : `Take ${i + 1}`}</span>${odd ? `<button class="small" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button>` : `<span style="color:var(--ok)">${m.toFixed(2)}</span>`}</div></div>`; }).join("")}</div>`
+    <div class="takes">${takes.map((t, i) => { const m = g.take_match?.[i] ?? 1; const odd = m < 0.5; return `<div class="take ${odd ? "odd" : ""}">${g.take_photos?.[i] ? `<div class="take-photo">${photoSvg(peakRec(g.take_photos[i]), { w: 120, h: 120, trails: false, color, label: `Take ${i + 1}` })}</div>` : ""}${spark(t, color, 100, 36, odd)}<div class="row between" style="font-size:12px"><span style="${odd ? "color:var(--warn)" : ""}">${odd ? "Odd one out" : `Take ${i + 1}`}</span>${odd ? `<button class="small" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button>` : `<span style="color:var(--ok)">${m.toFixed(2)}</span>`}</div></div>`; }).join("")}</div>`
     : `<p class="muted">Not recorded yet.</p>`}
   </section>`;
 }
@@ -519,6 +584,10 @@ function enginePage() {
         ${slider("lockout_ms", "Lockout after a weapon hit", 100, 700, 25, "ms")}
         ${slider("pose_hold_ms", "Pose hold time", 100, 800, 25, "ms")}
         ${slider("capture_takes", "Takes per capture", 3, 8, 1, "")}
+        <label class="field">How capture works<select data-change="setting" data-k="capture_style">
+          <option value="countdown" ${S.settings.capture_style !== "free" ? "selected" : ""}>Countdown takes: 3-2-1, record, repeat</option>
+          <option value="free" ${S.settings.capture_style === "free" ? "selected" : ""}>Just do it: it finds each take by itself</option></select></label>
+        ${S.settings.capture_style !== "free" ? slider("capture_countdown_s", "Countdown before each take", 1, 5, 1, "s") + slider("capture_window_s", "Recording time per take", 1.5, 5, 0.5, "s") : ""}
       </section>
     </div>
     <div class="narrow">
@@ -599,10 +668,65 @@ function hudPage() {
 function renderModal() {
   const el = $("#modal");
   if (route.page === "overlay" || route.page === "hud") { setHTML(el, ""); return; }
+  if (S.capture && S.capture.phase === "perform" && S.capture.style === "countdown") { captureStage(el, S.capture); return; }
   if (S.capture) { setHTML(el, `<div class="modal-back"><section class="modal" aria-label="Quick capture">${captureHtml(S.capture, false)}</section></div>`); return; }
   if (S.drill) { setHTML(el, `<div class="modal-back"><section class="modal" aria-label="Accuracy test">${drillHtml(S.drill, false)}</section></div>`); return; }
   if (S.calibration || ui.calibDone) { setHTML(el, `<div class="modal-back"><section class="modal" aria-label="Calibrate">${calibHtml()}</section></div>`); return; }
   setHTML(el, "");
+}
+
+// ---------------------------------------------------------------- capture, like recording software
+
+const KIND_LINE = (c) => c.kind === "motion" ? `<i class="dot ${c.source}"></i><b>${cap(c.source)} motion</b>`
+  : c.kind === "move" ? `<i class="dot pose"></i><b>Body move</b> · webcam only, weapons still`
+  : c.kind === "pose" ? `<i class="dot pose"></i><b>Pose</b> · get into it and hold it while it records`
+  : `<i class="dot warn"></i><b>Swing a weapon, do a body move, or hold a pose</b> · it works out which`;
+
+function takeOverlay(c) {
+  const left = c.take_remaining;
+  if (c.take_phase === "countdown") return `<div class="cap-count" key="${Math.ceil(left)}">${Math.max(1, Math.ceil(left))}</div><div class="cap-sub">Get ready</div>`;
+  if (c.take_phase === "recording") {
+    const done = c.take_length ? 1 - left / c.take_length : 0;
+    return `${done < 0.22 ? `<div class="cap-count go">GO!</div>` : ""}<div class="cap-rec"><i></i>REC ${left.toFixed(1)} s</div><div class="cap-bar"><i style="width:${Math.round(done * 100)}%"></i></div>`;
+  }
+  if (c.take_phase === "checking") return `<div class="cap-sub">Checking…</div>`;
+  if (c.take_phase === "review") return `<div class="cap-result ${c.take_message.startsWith("✓") ? "ok" : "again"}">${esc(c.take_message)}</div>`;
+  return "";
+}
+
+function captureStage(el, c) {
+  if (!el.querySelector(".capture-shell")) {
+    setHTML(el, `<div class="modal-back center"><section class="modal wide capture-shell" aria-label="Capture">
+      <div id="cap-head"></div>
+      <div class="stage cap-stage"><div class="mirror"><img class="preview-img" alt=""><canvas class="skel-canvas"></canvas></div>
+        <div class="cap-over" id="cap-over" aria-live="polite"></div>
+        <span class="cap-nocam">${S.camera.ok ? "" : esc(S.camera.message || "Webcam off")}</span></div>
+      <div class="cap-strip" id="cap-strip" aria-label="Your takes"></div>
+      <div id="cap-body" class="stack" style="gap:12px"></div></section></div>`);
+    drawSkeleton();
+  }
+  const trig = { clash: "Started by a weapons clash", hotkey: "Started with ⌥C", ui: "Started from the app" }[c.trigger] || "";
+  setHTML($("#cap-head"), `<div class="modal-title"><div class="stack" style="gap:2px"><div class="row" style="gap:10px">${ICONS.capture.replace('stroke="currentColor"', 'stroke="#ff6b3d"')}<b>${c.editing ? "Add takes" : "Capture"}</b><span class="muted" style="font-size:13px">Take ${Math.min(c.count + 1, c.kind === "pose" ? 1 : c.target)} of ${c.kind === "pose" ? 1 : c.target}</span></div><span class="muted" style="font-size:12px">${esc(trig)}</span></div><button class="small ghost" data-act="capture-cancel">Cancel</button></div>`);
+  setHTML($("#cap-over"), takeOverlay(c));
+  setHTML($("#cap-strip"), takeStrip(c));
+  $(".cap-stage").classList.toggle("recording", c.take_phase === "recording");
+  const target = c.kind === "pose" ? 1 : c.target;
+  const finish = (c.kind === "motion" || c.kind === "move") && c.count >= 3 && c.count < c.target ? `<button data-act="capture-finish">Finish with ${c.count} takes →</button>` : "";
+  setHTML($("#cap-body"), `<div class="row between wrap"><span class="row" style="gap:8px;font-size:13px">${KIND_LINE(c)}</span>
+      <div class="dots">${Array.from({ length: target }, (_, i) => `<i class="${i < c.count ? "on" : ""}"></i>`).join("")}</div></div>
+    ${c.kind ? "" : `<div class="row wrap"><button data-act="capture-pose">It's a pose →</button><button data-act="capture-move">It's a body move →</button></div>`}
+    <div class="row between" style="border-top:1px solid #1e2330;padding-top:12px"><span class="muted" style="font-size:12px">Each take: 3-2-1, then ${S.settings.capture_window_s} s of recording. Nothing fires while capturing. Esc cancels.</span>${finish}</div>`);
+}
+
+// The takes you've kept so far, like the take list in recording software.
+function takeStrip(c) {
+  const target = c.kind === "pose" ? 1 : c.target;
+  const ph = c.take_photos || [];
+  return Array.from({ length: Math.max(target, ph.length) }, (_, i) => {
+    const p = ph[i], done = i < c.count || (c.kind === "pose" && ph.length);
+    const color = c.kind === "motion" ? SOURCE_COLOR[c.source] : "#4fd1a5";
+    return `<div class="cap-take ${done ? "done" : ""} ${done && i === c.count - 1 && c.take_phase === "review" ? "fresh" : ""}">${p ? photoSvg(peakRec(p), { w: 96, h: 96, trails: false, color, label: `Take ${i + 1}` }) : `<span>${done ? "✓" : i + 1}</span>`}<small>Take ${i + 1}</small></div>`;
+  }).join("");
 }
 
 function captureHtml(c, inHud) {
@@ -614,6 +738,9 @@ function captureHtml(c, inHud) {
     let body;
     if (!c.ready) {
       body = `<div class="countdown">${Math.ceil(c.ready_in)}</div><p class="soft" style="text-align:center">Get ready…</p>`;
+    } else if (c.style === "countdown") {
+      body = `<div class="cap-hud ${c.take_phase === "recording" ? "recording" : ""}">${takeOverlay(c)}</div>
+        <div class="row between"><span class="row" style="gap:8px;font-size:12px">${KIND_LINE(c)}</span><div class="dots">${Array.from({ length: c.kind === "pose" ? 1 : c.target }, (_, i) => `<i class="${i < c.count ? "on" : ""}"></i>`).join("")}</div></div>`;
     } else if (c.kind === "pose") {
       body = `<div class="note info">Hold the pose still.</div><div class="meter webcam" style="height:10px"><i style="width:${Math.round(c.pose_progress * 100)}%"></i></div><p class="soft">${c.pose_progress > 0 ? "HOLD IT" : "Get into the pose…"}</p>`;
     } else if (c.kind === "motion") {
@@ -644,6 +771,7 @@ function captureHtml(c, inHud) {
   const listening = !c.key;
   return `${title}${steps}
     <div class="note info row"><i class="dot ${c.kind === "motion" ? c.source : "pose"}"></i><span style="flex:1"><b>${c.count} ${c.kind === "pose" ? "frames" : "takes"}</b> · ${esc(c.kind === "motion" ? cap(c.source) + " motion" : c.kind === "move" ? "Body move" : "Pose")}${c.kind === "move" && c.auto_scope ? ` · judged on: <b>${esc(SCOPE_LABEL[c.auto_scope].toLowerCase())}</b> (what moved; change it on its page)` : ""}</span></div>
+    ${(c.take_photos || []).some(Boolean) ? `<div class="cap-strip">${takeStrip(c)}</div>` : ""}
     <div class="keybox"><div class="row between"><b>Key</b>${listening ? `<span style="font-size:12px;color:#ff9a76">● Listening</span>` : ""}</div>
       <span class="soft" style="font-size:13px">Press the key this move should send: the one you bound in WoW.${inHud ? " (Works while WoW has focus.)" : ""}</span>
       <div class="row">${c.key ? `<span class="key huge">${esc(c.key_label)}</span>` : `<span class="key huge listening">…</span>`}</div>
@@ -674,6 +802,12 @@ function onCapture(m) {
   if (m.phase === "done" || m.phase === "cancelled") { S.capture = null; if (m.message) flash(m.message); }
   else {
     const prev = S.capture;
+    if (m.style === "countdown" && prev) {
+      const sec = (x) => x.take_phase === "countdown" ? Math.ceil(x.take_remaining) : null;
+      if (m.take_phase === "countdown" && sec(m) !== sec(prev)) beep(660, 90, 0.1);
+      if (m.take_phase === "recording" && prev.take_phase !== "recording") beep(1320, 200, 0.14);
+      if (m.take_phase === "review" && prev.take_phase !== "review") m.take_message.startsWith("✓") ? beep(990, 120, 0.1) : beep(300, 220, 0.1);
+    }
     if (prev && m.count > prev.count) beep(1180, 70, 0.1);
     if (prev && !prev.ready && m.ready) beep(990, 160);
     S.capture = m;
@@ -692,11 +826,11 @@ function onCalibration(m) {
 
 let previewUrl = null;
 function showPreview(blob) {
-  const img = $("#preview");
-  if (!img) return;
+  const imgs = $$("#preview, img.preview-img");
+  if (!imgs.length) return;
   const url = URL.createObjectURL(blob);
-  img.onload = () => { if (previewUrl && previewUrl !== url) URL.revokeObjectURL(previewUrl); previewUrl = url; };
-  img.src = url;
+  imgs[0].onload = () => { if (previewUrl && previewUrl !== url) URL.revokeObjectURL(previewUrl); previewUrl = url; };
+  imgs.forEach((img) => { img.src = url; img.classList.add("live"); });
 }
 
 function onPose(m) {
@@ -707,8 +841,16 @@ function onPose(m) {
   const el = $("#meter-webcam i"); if (el) el.style.width = `${Math.round(top * 100)}%`;
 }
 
+// The skeleton the webcam sees, drawn over the video wherever there's a stage on screen (Engine
+// page, capture). The stage is mirrored like a mirror, so it moves the way you do.
 function drawSkeleton() {
-  const canvas = $("#skeleton"), img = $("#preview");
+  for (const canvas of $$("#skeleton, canvas.skel-canvas")) {
+    const img = canvas.id === "skeleton" ? $("#preview") : canvas.parentElement.querySelector("img.preview-img");
+    drawSkeletonOn(canvas, img);
+  }
+}
+
+function drawSkeletonOn(canvas, img) {
   const m = live.pose;
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1, cw = canvas.clientWidth, ch = canvas.clientHeight;
@@ -720,12 +862,22 @@ function drawSkeleton() {
   const iw = img?.naturalWidth || 16, ih = img?.naturalHeight || 9;
   const sc = Math.max(cw / iw, ch / ih), ox = (cw - iw * sc) / 2, oy = (ch - ih * sc) / 2;
   const P = (p) => [ox + p[0] * iw * sc, oy + p[1] * ih * sc];
-  ctx.lineWidth = 3; ctx.lineCap = "round";
-  ctx.strokeStyle = m.latched || m.best ? "rgba(79,209,165,.95)" : "rgba(122,162,255,.85)";
+  const big = canvas.classList.contains("skel-canvas");
+  ctx.lineWidth = big ? 4 : 3; ctx.lineCap = "round";
+  const rec = S?.capture?.take_phase === "recording";
+  ctx.strokeStyle = rec ? "rgba(255,107,61,.95)" : m.latched || m.best ? "rgba(79,209,165,.95)" : "rgba(122,162,255,.9)";
   for (const [a, b] of BONES) {
     if (m.lm[a][2] < 0.5 || m.lm[b][2] < 0.5) continue;
     const A = P(m.lm[a]), B = P(m.lm[b]);
     ctx.beginPath(); ctx.moveTo(...A); ctx.lineTo(...B); ctx.stroke();
+  }
+  if (big) {
+    ctx.fillStyle = ctx.strokeStyle;
+    for (const i of [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) {
+      if (m.lm[i][2] < 0.5) continue;
+      const p = P(m.lm[i]);
+      ctx.beginPath(); ctx.arc(p[0], p[1], i === 0 ? 7 : 4.5, 0, Math.PI * 2); ctx.fill();
+    }
   }
 }
 

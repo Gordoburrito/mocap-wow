@@ -30,6 +30,9 @@ DEFAULT_SETTINGS = {
     "auto_align": True,           # correct a Joy-Con that slips on the pipe, from moves you make
     "metrics": True,              # keep a local log of what fired (for the Metrics page)
     "body_moves": True,           # recognize body moves from the webcam alone
+    "capture_style": "countdown", # "countdown": 3-2-1, record a few seconds, per take; "free": just do it
+    "capture_countdown_s": 3,
+    "capture_window_s": 2.5,
 }
 
 KINDS = ("pose", "motion", "move", "jog", "hop")   # move = a body move seen by the webcam alone

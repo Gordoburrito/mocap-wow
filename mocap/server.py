@@ -7,6 +7,8 @@ from pathlib import Path
 
 from aiohttp import WSMsgType, web
 
+from .photos import NAME
+
 DROPPABLE = {"pose", "motion"}
 MAX_BACKLOG = 30
 
@@ -59,6 +61,7 @@ class Server:
         app.router.add_get("/api/debug", self._api_debug)
         app.router.add_post("/api/sim", self._api_sim)
         app.router.add_get("/api/metrics", self._api_metrics)
+        app.router.add_get("/photos/{name}", self._photo)
         app.router.add_static("/static", self.web_dir)
         runner = web.AppRunner(app, access_log=None)
         await runner.setup()
@@ -67,6 +70,14 @@ class Server:
     async def _index(self, request):
         return web.FileResponse(self.web_dir / "index.html",
                                 headers={"Cache-Control": "no-store"})
+
+    async def _photo(self, request):
+        """A photo of one of your takes (named by its content, so it never changes)."""
+        name = request.match_info["name"]
+        path = self.engine.photos.folder / name
+        if not NAME.match(name) or not path.is_file():
+            raise web.HTTPNotFound()
+        return web.FileResponse(path, headers={"Cache-Control": "max-age=31536000, immutable"})
 
     async def _api_state(self, request):
         return web.json_response(self.engine.snapshot())

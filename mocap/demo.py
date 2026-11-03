@@ -26,6 +26,7 @@ from . import camera_moves
 from . import profile as profiles
 from .fusion import CameraTrack
 from .motion import GravityTracker, Segmenter, peak
+from .photos import PhotoBook
 from .sim.body import GUARD, SIDE_OF, Webcam, project, skeleton
 from .sim.stick import BOW, CATALOGUE, MELEE, Stroke, human_variation, pitch_up, simulate
 
@@ -57,6 +58,41 @@ POSES = [
     ("arms_up", "Arms up: arm / disarm", "", None, "whole", "arm_toggle"),
     ("right_up", "Right arm raised", "Aspect of the Eagle", "KeyB", "right_arm", "key"),
 ]
+
+
+# A real photo of a real person per sample gesture (freely licensed, from Wikimedia Commons; see
+# demo_photos/credits.json and THIRD_PARTY.md), with the skeleton MediaPipe finds on it.
+PHOTOS_DIR = Path(__file__).resolve().parent / "demo_photos"
+PHOTO_OF = {"Raptor Strike": "slash_left", "Mongoose Bite": "slash_right", "Wing Clip": "low_slash",
+            "Harpoon": "thrust", "Carve": "circle", "Draw and aim": "draw_aim", "Snap shot": "snap_shot",
+            "Shoot to the sky": "sky_shot", "Pull the string": "pull_string", "Turn the bow": "turn_bow",
+            "Feign Death": "duck", "Muzzle kick": "kick", "Stomp": "stomp", "Two-handed shove": "shove",
+            "Arms up: arm / disarm": "arms_up", "Right arm raised": "right_up"}
+
+
+def attach_photos(profile, photos_dir):
+    """Give each sample gesture without photos its sample photo. Returns True if any changed."""
+    try:
+        credits = json.loads((PHOTOS_DIR / "credits.json").read_text())
+    except (OSError, ValueError):
+        return False
+    book = PhotoBook(photos_dir)
+    changed = False
+    for g in profile["gestures"]:
+        slug = PHOTO_OF.get(g["name"])
+        c = credits.get(slug) if slug else None
+        if c is None or any(g.get("photos") or []):
+            continue
+        try:
+            name = book.store((PHOTOS_DIR / c["file"]).read_bytes())
+        except OSError:
+            continue
+        rec = {"aspect": c["aspect"], "peak": 0, "frames": [{"file": name, "lm": c["lm"]}], "trails": {},
+               "credit": {k: c.get(k) for k in ("author", "license", "license_url", "source", "title")}}
+        n = len(g.get("templates") or []) if g["kind"] != "pose" else 1
+        g["photos"] = [rec] + [None] * (n - 1)
+        changed = True
+    return changed
 
 
 def demo_dir():
@@ -255,12 +291,17 @@ def prepare(data_dir, reset=False):
     path = data_dir / "profiles" / "hunter-sample.json"
     if reset or not path.exists():
         profile = build_profile()
+        attach_photos(profile, data_dir / "photos")
         profiles.save(str(path), profile)
         metrics = data_dir / "metrics"
         if metrics.is_dir():
             for f in metrics.glob("*.jsonl"):
                 f.unlink()
         write_history(str(metrics), profile)
+    else:
+        profile = profiles.load(str(path))
+        if attach_photos(profile, data_dir / "photos"):      # an older demo folder: add the photos
+            profiles.save(str(path), profile)
     return str(path)
 
 

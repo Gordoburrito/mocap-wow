@@ -211,4 +211,33 @@ class SimCamera(threading.Thread):
                 lm = np.array(frames[self.rng.integers(len(frames))], dtype=float) if frames else None
             if lm is not None:
                 self.engine.on_pose(lm, self.aspect, now)
+                preview = getattr(self.engine, "preview_wanted", False)
+                photos = getattr(self.engine, "photos_wanted", False)
+                if (preview or photos) and now - getattr(self, "_last_preview", 0) >= 1 / 15:
+                    self._last_preview = now
+                    jpeg = self._render(lm)
+                    if jpeg is not None:
+                        if preview:
+                            self.engine.emit_binary(jpeg)
+                        if photos:
+                            self.engine.on_photo(now, jpeg)
             time.sleep(1 / 30)
+
+    def _render(self, lm, width=480):
+        """A drawn body as the 'video' (and the photos of takes), so those paths run in simulation too."""
+        try:
+            import cv2
+        except ImportError:
+            return None
+        h = int(width / self.aspect)
+        img = np.full((h, width, 3), (24, 20, 18), np.uint8)
+        P = lambda i: (int(lm[i, 0] * width), int(lm[i, 1] * h))
+        body = [(11, 12), (11, 23), (12, 24), (23, 24), (11, 13), (13, 15), (12, 14), (14, 16),
+                (23, 25), (25, 27), (24, 26), (26, 28)]
+        torso = np.array([P(11), P(12), P(24), P(23)], np.int32)
+        cv2.fillPoly(img, [torso], (92, 84, 78))
+        for a, b in body:
+            cv2.line(img, P(a), P(b), (92, 84, 78), 26, cv2.LINE_AA)
+        cv2.circle(img, P(0), 26, (110, 100, 94), -1, cv2.LINE_AA)
+        ok, jpeg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        return jpeg.tobytes() if ok else None

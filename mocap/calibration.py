@@ -129,7 +129,9 @@ class DeviceCalibration:
 
         Unlike the gyro-only tracker this works however large the offset is, and it can't
         mistake a slow deliberate movement for drift: the camera would have seen the hand move.
-        The spread check still refuses a stretch where the pipe was twisting in place."""
+        The spread check still refuses a stretch where the pipe was twisting in place. (The
+        engine also waits for a swing to settle first: the slow end of a swing back to guard
+        looks still to the camera.)"""
         g = np.array([v for t, v in self._raw if t0 <= t <= t1])
         if len(g) < 20:
             return None

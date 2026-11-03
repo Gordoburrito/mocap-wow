@@ -13,7 +13,8 @@ hidden += h
 import sdl2dll  # noqa: E402  (pysdl2-dll ships SDL2.framework; the app only needs SDL2 itself)
 datas += [(os.path.join(os.path.dirname(sdl2dll.__file__), "dll", "SDL2.framework"), "sdl2dll/dll/SDL2.framework")]
 datas += [(os.path.join(ROOT, "web"), "web"),
-          (os.path.join(ROOT, "models", "pose_landmarker_full.task"), "models")]
+          (os.path.join(ROOT, "models", "pose_landmarker_full.task"), "models"),
+          (os.path.join(ROOT, "mocap", "demo_photos"), "mocap/demo_photos")]
 hidden += collect_submodules("mocap") + ["AppKit", "Foundation", "WebKit", "Quartz", "ApplicationServices",
                                          "objc", "sdl2", "sdl2dll", "aiohttp"]
 

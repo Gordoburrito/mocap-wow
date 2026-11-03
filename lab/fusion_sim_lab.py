@@ -21,6 +21,7 @@ import numpy as np
 from mocap import motion
 from mocap.calibration import DeviceCalibration, rotation_angle
 from mocap.camera_moves import MoveClassifier, MoveJoiner, MoveSegmenter
+from mocap.engine import SETTLE_S, STILL_DELAY_S, STILL_WINDOW_S
 from mocap.fusion import CameraTrack
 from mocap.sim.body import GUARD, SIDE_OF, Webcam
 from mocap.sim.stick import BOW, BOW_GESTURES, MELEE, MELEE_GESTURES, Stroke, human_variation, reverse, rot, simulate
@@ -175,16 +176,19 @@ class Pipeline:
     def run(self, stream):
         t, gyro, accel = stream
         seg, grav = motion.Segmenter(), motion.GravityTracker()
-        next_still = 0.0
+        next_still, settle = 0.0, -np.inf
         for i in range(len(t)):
             g, a = self.cal.apply(t[i], gyro[i], accel[i])
             s = seg.feed(t[i], g, grav.linear(g, a, t[i]))
+            if seg.active or s is not None:
+                settle = t[i] + SETTLE_S
             if s is not None:
                 self.on_segment(s)
-            if self.camera_bias and t[i] >= next_still:
+            w1 = t[i] - STILL_DELAY_S
+            if self.camera_bias and t[i] >= next_still and w1 - STILL_WINDOW_S >= settle:
                 next_still = t[i] + 1 / 30
-                if self.track.still(self.side, t[i] - 0.5, t[i]):
-                    self.cal.camera_still(t[i] - 0.5, t[i])
+                if self.track.still(self.side, w1 - STILL_WINDOW_S, w1):
+                    self.cal.camera_still(w1 - STILL_WINDOW_S, w1)
         return self
 
     def on_segment(self, s):

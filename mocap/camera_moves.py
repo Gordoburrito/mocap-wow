@@ -101,6 +101,11 @@ class MoveSegmenter:
         self.peak = 0.0
         self._cooldown_until = -np.inf
 
+    @property
+    def active(self):
+        """A move has started and hasn't ended yet."""
+        return self._active is not None
+
     def reset(self):
         self._recent.clear()
         self._hist.clear()

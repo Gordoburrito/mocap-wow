@@ -15,6 +15,8 @@ one key press (or one held key) per recognized gesture.
 """
 
 import queue
+import re
+from pathlib import Path
 import threading
 import time
 from collections import deque
@@ -27,6 +29,7 @@ from . import camera_moves, permission_name
 from .calibration import DeviceCalibration, StillCapture, pose_quality, trigger_from_noise
 from .fusion import CameraTrack, ClockMap, HandFinder, LagFinder
 from .metrics import Drill, Metrics
+from .photos import PhotoBook, file_names
 from .keys import binding_label, frontmost_app_name, valid_binding
 from .motion import (DEFAULT_START, MIRROR_WINDOW, ClashDetector, GravityTracker, Segmenter,
                      SwingClassifier, held_back, peak, prepare)
@@ -42,6 +45,9 @@ TRAIL_JOINTS = {"left_arm": [15], "right_arm": [16], "arms": [15, 16], "left_leg
 CAPTURE_READY_S = 1.2           # ignore everything right after a capture starts (the clash itself)
 CAPTURE_TIMEOUT_S = 40.0
 POSE_CAPTURE_S = 2.0
+STILL_WINDOW_S = 0.5         # the camera must see the weapon hand still this long to re-zero its gyro
+SETTLE_S = 1.0               # ...starting at least this long after a weapon motion (the slow end of a swing back)
+STILL_DELAY_S = 0.3          # ...and judged this much later (the gentle start of a swing looks still at first)
 POSE_STEADY_S = 0.8
 CALIBRATION_STEPS = [
     ("still", "Rest the weapon on something and let go", 2.0),
@@ -66,6 +72,7 @@ class Device:
         self.rate = 0.0
         self.rate_t0 = time.monotonic()
         self.locked_until = -np.inf
+        self.settle_until = -np.inf       # sensor time: no gyro re-zeroing before this
         self.mirror_block = (-np.inf, set(), "")
         self.clock = ClockMap()                 # this Joy-Con's sensor clock -> host clock
         self.finder = HandFinder()              # which wrist (on camera) holds it
@@ -83,7 +90,7 @@ class Device:
 
 class Engine:
     def __init__(self, profile_path, keys, clock=time.monotonic, front_app=frontmost_app_name,
-                 profiles_dir=None, metrics_dir=None):
+                 profiles_dir=None, metrics_dir=None, photos_dir=None):
         self.lock = threading.RLock()
         self.path = profile_path
         self.profiles_dir = profiles_dir
@@ -124,6 +131,8 @@ class Engine:
         self.move_scopes = {}                           # scope -> MoveScope (live recognition)
         self.move_fires = deque(maxlen=12)              # (start, end, body points) of moves that fired
         self.move_frames = deque(maxlen=240)            # recent landmarks, for take keyframes
+        # Webcam photos of each take (start, peak, end) with the skeleton on each.
+        self.photos = PhotoBook(photos_dir or Path(profile_path).resolve().parent / "photos")
         self.weapon_spans = deque(maxlen=20)            # (start, end, hand) of weapon motions that fired
         self.lag_finder = LagFinder()
         self.metrics = Metrics(metrics_dir, enabled=self.profile["settings"].get("metrics", True))
@@ -151,6 +160,52 @@ class Engine:
     def emit_binary(self, data):
         for fn in list(self.binary_listeners):
             fn(data)
+
+    @property
+    def photos_wanted(self):
+        """The camera keeps JPEG frames for us while a capture is recording takes."""
+        c = self.capture
+        return c is not None and c["phase"] == "perform"
+
+    def on_photo(self, t, jpeg):
+        """A webcam frame as JPEG, stamped like the landmarks found on it."""
+        self.photos.add(t, jpeg)
+
+    def _take_photos(self, t0, t1, joints=None, peak_t=None, trail_joints=()):
+        """Photos for a take (camera time), remembered on the capture so a cancel can drop them."""
+        try:
+            rec = self.photos.take(list(self.move_frames), t0, t1, joints, peak_t, trail_joints)
+        except OSError:
+            return None
+        if rec is not None and self.capture is not None:
+            self.capture.setdefault("photo_files", set()).update(f["file"] for f in rec["frames"])
+        return rec
+
+    def _move_photos(self, take):
+        scope = camera_moves.auto_scope([take])
+        pts = [i for i in camera_moves.SCOPES[scope] if i < len(camera_moves.JOINTS)]
+        joints = [camera_moves.JOINTS[i] for i in pts] or [23, 24]
+        return self._take_photos(take[0, 0], take[-1, 0], joints=joints,
+                                 trail_joints=TRAIL_JOINTS.get(scope) or [15, 16])
+
+    def _photo_refs(self):
+        """Photo files any profile still uses (profiles can share them)."""
+        refs = file_names(self.profile["gestures"])
+        if self.capture is not None:
+            refs |= file_names(self.capture.get("photos") or [])
+        if self.profiles_dir:
+            for other in Path(self.profiles_dir).glob("*.json"):
+                if Path(other).resolve() == Path(self.path).resolve():
+                    continue
+                try:
+                    refs |= set(re.findall(r"[0-9a-f]{16}\.jpg", other.read_text()))
+                except OSError:
+                    pass
+        return refs
+
+    def _drop_photos(self, names):
+        if names:
+            self.photos.forget(names, self._photo_refs())
 
     def save(self):
         with self.lock:
@@ -244,6 +299,22 @@ class Engine:
             mid = g["samples"][len(g["samples"]) // 2]
             out["skeleton"] = [[round(p[0], 3), round(p[1], 3), round(p[3], 2)] for p in mid["lm"]]
             out["aspect"] = mid["aspect"]
+        photos = g.get("photos") or []
+        if any(photos):
+            # Photos of you doing it: the most typical take in full (the tile plays it), and the
+            # peak of every take (the contact sheet).
+            if g["kind"] == "pose":
+                best = len(photos) - 1
+            else:
+                rank = out.get("take_match")
+                if g["kind"] == "move" and g.get("templates"):
+                    seqs = np.stack([camera_moves.prepare(t) for t in g["templates"]])
+                    rank = [-float(np.mean([np.abs(a - b).mean() for b in seqs])) for a in seqs]
+                rank = list(rank or [0.0] * len(photos)) + [-np.inf] * len(photos)
+                best = max((i for i, r in enumerate(photos) if r), key=lambda i: rank[i])
+            out["photo"] = photos[best]
+            # A sample photo (the demo's) shows what the move looks like, not one of the takes.
+            out["take_photos"] = [_peak_photo(r) if r and not r.get("credit") else None for r in photos]
         self._public_cache[g["id"]] = out
         return out
 
@@ -257,7 +328,7 @@ class Engine:
         return True
 
     def public_gesture(self, g):
-        out = {k: v for k, v in g.items() if k not in ("samples", "templates", "paths", "skeletons")}
+        out = {k: v for k, v in g.items() if k not in ("samples", "templates", "paths", "skeletons", "photos")}
         out["scope"] = g.get("scope") or ("auto" if g["kind"] == "move" else "whole")
         if g["kind"] == "move":
             out["scope_effective"] = move_scope(g)
@@ -533,6 +604,11 @@ class Engine:
         """During capture: a body move with the weapons still. Pieces with short pauses between
         them are one take; the take is kept once you've paused for a moment."""
         c = self.capture
+        if c.get("style") == "countdown":
+            if c["phase"] == "perform" and c["kind"] in (None, "move") and \
+                    self._in_window(seg[0, 0] - self.track.lag, end=seg[-1, 0] - self.track.lag):
+                c["window"]["move"].append(seg)
+            return
         if c["phase"] != "perform" or self.clock() < c["ready_at"] or c["kind"] in ("pose", "motion"):
             return
         lag = self.track.lag
@@ -555,6 +631,8 @@ class Engine:
 
     def _capture_move_tick(self, t):
         c = self.capture
+        if c is not None and c.get("style") == "countdown":
+            return
         held = c.get("move_hold") if c else None
         if held is not None and t - held[-1, 0] > camera_moves.JOIN_GAP:
             self._commit_move_take()
@@ -569,6 +647,7 @@ class Engine:
             c["kind"], c["source"] = "move", "webcam"
         c["takes"].append(np.round(held, 4).tolist())
         c.setdefault("skeletons", []).append(self._keyframes(held[0, 0], held[-1, 0]))
+        c.setdefault("photos", []).append(self._move_photos(held))
         c["message"] = ""
         if len(c["takes"]) >= c["target"]:
             self._finish_perform()
@@ -650,6 +729,8 @@ class Engine:
                     and self.calib["phase"] == "capture":
                 self.calib["energies"].append(energy)
             segment = dev.segmenter.feed(t, gyro, lin)
+            if dev.segmenter.active or segment is not None:
+                dev.settle_until = t + SETTLE_S
             if host - dev.last_emit >= 1 / 30:
                 self.emit({"type": "motion", "device": name, "role": dev.role,
                            "energy": round(dev.energy_peak, 2), "start": dev.segmenter.start})
@@ -817,8 +898,12 @@ class Engine:
         for dev in self.devices.values():
             if dev.side is None or dev.clock.offset is None:
                 continue
-            if self.track.still(dev.side, t - lag - 0.5, t - lag):
-                change = dev.cal.camera_still(dev.clock.sensor(t - lag - 0.5), dev.clock.sensor(t - lag))
+            w1 = t - lag - STILL_DELAY_S
+            w0 = w1 - STILL_WINDOW_S
+            if dev.clock.sensor(w0) < dev.settle_until:
+                continue        # a motion started during or since: it wasn't really still
+            if self.track.still(dev.side, w0, w1):
+                change = dev.cal.camera_still(dev.clock.sensor(w0), dev.clock.sensor(w1))
                 if change is not None and np.degrees(change) >= 1.0:
                     # Only real corrections count (it re-checks every quarter second you're still).
                     self.metrics.calibrated("camera_bias", dev.name, round(float(np.degrees(change)), 2))
@@ -838,6 +923,10 @@ class Engine:
             "key": c["key"], "key_label": binding_label(c["key"]) if c["key"] else None,
             "conflict": self._key_conflict(c["key"]),
             "auto_scope": c.get("auto_scope"),
+            "style": c.get("style"), "take_phase": c.get("take_phase"), "take_message": c.get("take_message", ""),
+            "take_remaining": round(max(0.0, c.get("take_until", now) - now), 2),
+            "take_length": c.get("take_length", 0.0), "misses": c.get("misses", 0),
+            "take_photos": [_peak_photo(r) for r in (c.get("photos") or [])],
             "pose_progress": round(min(1.0, (now - c["pose_since"]) / POSE_CAPTURE_S), 2)
             if c.get("pose_since") else 0.0,
             "traces": [np.round(np.linalg.norm(prepare(s)[0][:, :3], axis=1), 2).tolist()
@@ -860,6 +949,9 @@ class Engine:
             self._release_all_holds()
             editing = self.gesture(gid) if gid else None
             now = self.clock()
+            old, self.capture = self.capture, None
+            if old is not None:
+                self._drop_photos(old.get("photo_files"))
             self.capture = {
                 "phase": "perform", "trigger": trigger, "started": now,
                 "ready_at": now + (CAPTURE_READY_S if trigger == "clash" else 0.6),
@@ -869,12 +961,22 @@ class Engine:
                 "message": "", "key": None, "name": "", "casts": "", "mode": "tap",
                 "tooltip_type": None, "tooltip_text": "", "editing": gid,
                 "pose_since": None, "steady_since": None, "move_hold": None, "weapon_spans": [],
+                "style": self.settings.get("capture_style", "countdown"), "misses": 0,
             }
+            if self.capture["style"] == "countdown":
+                # Like recording software: 3-2-1, then a few seconds of recording, per take.
+                self.capture["ready_at"] = now
+                self._next_take(now, first=True)
             self.move_seg.reset()
         self.emit({"type": "capture", **self._capture_public()})
 
     def _capture_motion(self, dev, segment, host):
         c = self.capture
+        if c.get("style") == "countdown":
+            if c["phase"] == "perform" and c["kind"] in (None, "motion") and \
+                    self._in_window(dev.clock.host(segment[0, 0])):
+                c["window"]["motion"].append((dev, segment))
+            return
         if c["phase"] != "perform" or host < c["ready_at"] or c["kind"] in ("pose", "move"):
             return
         if c["source"] is None:
@@ -894,14 +996,15 @@ class Engine:
             return
         if peaks and pk > 1.8 * max(peaks) and len(peaks) == 1:
             # The first "take" was the slow swing back; start over from this one.
-            c["takes"], peaks[:], c["paths"], c["path_jobs"] = [], [], [], []
+            c["takes"], peaks[:], c["paths"], c["path_jobs"], c["photos"] = [], [], [], [], []
         peaks.append(pk)
         c.setdefault("weapon_spans", []).append((dev.clock.host(segment[0, 0]), dev.clock.host(segment[-1, 0]),
                                                  dev.side))
         c["takes"].append(np.round(segment, 4).tolist())
         c.setdefault("paths", []).append(None)
+        c.setdefault("photos", []).append(None)
         c.setdefault("path_jobs", []).append((len(c["takes"]) - 1, dev.name, dev.clock.host(segment[0, 0]),
-                                             dev.clock.host(segment[-1, 0])))
+                                             dev.clock.host(segment[-1, 0]), _peak_host(dev, segment)))
         self._learn_from(dev, segment)
         c["message"] = ""
         self.rumble(dev.name, 0.35, 60)
@@ -912,6 +1015,12 @@ class Engine:
 
     def _capture_pose(self, feat, landmarks, aspect, t):
         c = self.capture
+        if c.get("style") == "countdown":
+            if c["phase"] == "perform" and c["kind"] in (None, "pose") and feat is not None and \
+                    self._in_window(t - self.track.lag, pose=True):
+                c["window"]["pose"].append(({"lm": np.round(landmarks, 4).tolist(), "aspect": round(float(aspect), 4)},
+                                            bool(len(self.pose_clf.neutral[0])) and self.pose_clf.away_from_neutral(feat), t))
+            return
         if c["phase"] != "perform" or self.clock() < c["ready_at"] or c["kind"] in ("motion", "move"):
             return
         if feat is None:
@@ -936,14 +1045,111 @@ class Engine:
             c["pose_since"] = now
         c["takes"].append({"lm": np.round(landmarks, 4).tolist(), "aspect": round(float(aspect), 4)})
         if now - c["pose_since"] >= POSE_CAPTURE_S:
+            mid = t - POSE_CAPTURE_S / 2
+            c["photos"] = [self._take_photos(mid, mid, peak_t=mid)]
             self._finish_perform()
+
+    # ----------------------------------------------------------------- countdown takes
+
+    def _next_take(self, now, first=False):
+        c = self.capture
+        c["take_phase"] = "countdown"
+        c["take_length"] = float(self.settings.get("capture_countdown_s", 3))
+        c["take_until"] = now + c["take_length"] + (CAPTURE_READY_S if first and c["trigger"] == "clash" else 0.0)
+        c["window"] = {"motion": [], "move": [], "pose": []}
+
+    def _in_window(self, t, end=None, pose=False):
+        """Did something that started at host time t happen while this take was recording?"""
+        c = self.capture
+        start, stop = c.get("rec_start"), c.get("rec_stop")
+        if start is None or c.get("take_phase") not in ("recording", "checking"):
+            return False
+        stop = stop if stop is not None else np.inf
+        if pose:
+            return start + 0.4 <= t <= stop          # a held pose: once you've got into it
+        return start - 0.25 <= t <= stop and (end is None or end >= start)
+
+    def _take_tick(self, now):
+        c = self.capture
+        phase = c.get("take_phase")
+        if phase == "countdown" and now >= c["take_until"]:
+            c["take_phase"], c["rec_start"], c["rec_stop"] = "recording", now, None
+            c["take_length"] = float(self.settings.get("capture_window_s", 2.5))
+            c["take_until"] = now + c["take_length"]
+            c["window"] = {"motion": [], "move": [], "pose": []}
+        elif phase == "recording" and now >= c["take_until"]:
+            # Give a move that ended at the last moment time to finish arriving (the camera lags).
+            c["take_phase"], c["rec_stop"] = "checking", now
+            c["take_length"] = 0.6 + self.track.lag
+            c["take_until"] = now + c["take_length"]
+        elif phase == "checking" and now >= c["take_until"]:
+            if c["kind"] in (None, "move") and self.move_seg.active and now < c["take_until"] + 2.0:
+                return                                  # a body move is still finishing
+            self._judge_take(now)
+        elif phase == "review" and now >= c["take_until"]:
+            if c["kind"] == "pose" and c["takes"] or len(c["takes"]) >= c["target"]:
+                self._finish_perform()
+            else:
+                self._next_take(now)
+
+    def _judge_take(self, now):
+        """Keep what was done during the recording window as this take, or ask for it again."""
+        c, w = self.capture, self.capture["window"]
+        kept, msg = False, ""
+        if c["kind"] in (None, "motion") and w["motion"]:
+            dev, seg = max(w["motion"], key=lambda x: peak(x[1]))
+            if c["source"] is None:
+                c["kind"], c["source"] = "motion", dev.role
+            if dev.role != c["source"]:
+                msg = f"That was the {dev.role}; this move is on the {c['source']}. Again:"
+            else:
+                c["takes"].append(np.round(seg, 4).tolist())
+                c.setdefault("paths", []).append(None)
+                c.setdefault("photos", []).append(None)
+                c.setdefault("path_jobs", []).append((len(c["takes"]) - 1, dev.name, dev.clock.host(seg[0, 0]),
+                                                     dev.clock.host(seg[-1, 0]), _peak_host(dev, seg)))
+                c.setdefault("peaks", []).append(peak(seg))
+                self._learn_from(dev, seg)
+                self.rumble(dev.name, 0.35, 60)
+                self._fill_paths()          # the camera has caught up by now: paths and photos
+                kept = True
+        elif c["kind"] in (None, "move") and w["move"]:
+            take = np.concatenate(sorted(w["move"], key=lambda s: s[0, 0]))
+            c["kind"], c["source"] = "move", "webcam"
+            c["takes"].append(np.round(take, 4).tolist())
+            c.setdefault("skeletons", []).append(self._keyframes(take[0, 0], take[-1, 0]))
+            c.setdefault("photos", []).append(self._move_photos(take))
+            kept = True
+        elif c["kind"] in (None, "pose") and w["pose"]:
+            away = sum(a for _, a, _ in w["pose"]) / len(w["pose"])
+            if c["kind"] == "pose" or away >= 0.6:
+                c["kind"], c["source"] = "pose", "webcam"
+                c["takes"] = [f for f, _, _ in w["pose"]]
+                mid = w["pose"][len(w["pose"]) // 2][2]
+                c["photos"] = [self._take_photos(mid, mid, peak_t=mid)]
+                kept = True
+            elif not len(self.pose_clf.neutral[0]):
+                msg = "Didn't see a move. For a pose, press \"It's a pose\" (or record Neutral first). Again:"
+        if kept:
+            c["misses"] = 0
+            c["started"] = now                          # the capture timeout counts from the last take
+            n = len(c["takes"]) if c["kind"] != "pose" else 1
+            c["take_message"] = "✓ Got the pose" if c["kind"] == "pose" else f"✓ Take {n} of {c['target']}"
+        else:
+            c["misses"] += 1
+            c["take_message"] = msg or ("Didn't catch a move that time. Again:" if c["misses"] < 3 else
+                                        "Still nothing. Move bigger, check you're in view, or pick the kind below.")
+        c["take_phase"] = "review"
+        c["take_length"] = 0.9 if kept else 1.4
+        c["take_until"] = now + c["take_length"]
+        self.emit({"type": "capture", **self._capture_public()})
 
     def _fill_paths(self, final=False):
         """Attach the camera's view of the hand to each take once frames covering it arrive."""
         c = self.capture
         left = []
         for job in c.get("path_jobs", []):
-            i, name, t0, t1 = job
+            i, name, t0, t1, tp = job
             dev = self.devices.get(name)
             if dev is None or i >= len(c["paths"]):
                 continue
@@ -951,6 +1157,12 @@ class Engine:
                 side = dev.side
                 path = self.track.path(side, t0, t1) if side and self.settings["fusion"] else None
                 c["paths"][i] = np.round(path, 4).tolist() if path is not None else None
+                photos = c.setdefault("photos", [])
+                photos += [None] * (len(c["takes"]) - len(photos))
+                if photos[i] is None:
+                    lag = self.track.lag        # camera frames are stamped this long after the moment
+                    photos[i] = self._take_photos(t0 + lag, t1 + lag, peak_t=tp + lag,
+                                                  trail_joints=[{"left": 15, "right": 16}[side]] if side else [15, 16])
             else:
                 left.append(job)
         c["path_jobs"] = left
@@ -965,22 +1177,27 @@ class Engine:
 
     def _finish_perform(self):
         c = self.capture
+        c["take_phase"] = None
         if c["kind"] == "move" and c["takes"]:
             c["auto_scope"] = camera_moves.auto_scope(c["takes"])
         if c["kind"] == "motion":
             self._fill_paths(final=True)
             paths = c.get("paths") or [None] * len(c["takes"])
+            photos = ((c.get("photos") or []) + [None] * len(c["takes"]))[:len(c["takes"])]
             if len(c["takes"]) >= 3:
                 keep = prune_indices(c["takes"])
                 c["pruned"] = len(c["takes"]) - len(keep)
                 c["takes"] = [c["takes"][i] for i in keep]
                 paths = [paths[i] for i in keep]
-            c["paths"] = paths
+                photos = [photos[i] for i in keep]
+            c["paths"], c["photos"] = paths, photos
         if c["editing"]:
             g = self.gesture(c["editing"])
             if g is not None:
                 if g["kind"] == "pose":
                     g["samples"] = _cap(g["samples"] + c["takes"], MAX_POSE_SAMPLES)
+                    c.setdefault("photo_files", set()).update(file_names(g.get("photos") or []))
+                    g["photos"] = ((g.get("photos") or []) + [r for r in c.get("photos") or [] if r])[-4:]
                 elif g["kind"] == "move":
                     old = g.get("skeletons") or []
                     old = old + [None] * (len(g["templates"]) - len(old))
@@ -992,11 +1209,17 @@ class Engine:
                     old = old + [None] * (len(g["templates"]) - len(old))
                     g["templates"] = g["templates"] + c["takes"]
                     g["paths"] = old + c["paths"]
+                if g["kind"] in ("move", "motion"):
+                    n_old = len(g["templates"]) - len(c["takes"])
+                    old = (g.get("photos") or [])[:n_old]
+                    new = (c.get("photos") or [])[:len(c["takes"])]
+                    g["photos"] = old + [None] * (n_old - len(old)) + new + [None] * (len(c["takes"]) - len(new))
                 self.save()
                 self.rebuild()
                 self._event(g, "takes added", f"{len(c['takes'])} more"
                             + (f", dropped {c['pruned']} stray" if c.get("pruned") else ""))
             self.capture = None
+            self._drop_photos(c.get("photo_files"))
             self.emit({"type": "capture", "phase": "done", "gid": c["editing"]})
             self.emit(self.snapshot())
             return
@@ -1028,8 +1251,10 @@ class Engine:
             g.update(key=c["key"], casts=c["casts"], mode=c["mode"],
                      tooltip={"type": c["tooltip_type"],
                               "steps": [s for s in [c["tooltip_text"].strip()] if s]})
+            photos = c.get("photos") or []
             if c["kind"] == "pose":
                 g["samples"] = _cap(c["takes"], MAX_POSE_SAMPLES)
+                g["photos"] = [r for r in photos if r]
             elif c["kind"] == "move":
                 g["templates"] = c["takes"]
                 g["skeletons"] = c.get("skeletons") or [None] * len(c["takes"])
@@ -1038,8 +1263,11 @@ class Engine:
             else:
                 g["templates"] = c["takes"]
                 g["paths"] = c.get("paths") or [None] * len(c["takes"])
+            if c["kind"] in ("move", "motion"):
+                g["photos"] = (photos + [None] * len(c["takes"]))[:len(c["takes"])]
             self.profile["gestures"].append(g)
             self.capture = None
+            self._drop_photos(c.get("photo_files"))      # takes you didn't keep
             self.last_captured = g["id"]
             self.save()
             self.rebuild()
@@ -1053,7 +1281,9 @@ class Engine:
 
     def cancel_capture(self):
         with self.lock:
-            self.capture = None
+            c, self.capture = self.capture, None
+            if c is not None:
+                self._drop_photos(c.get("photo_files"))
         self.emit({"type": "capture", "phase": "cancelled"})
         self.emit(self.snapshot())
 
@@ -1061,7 +1291,9 @@ class Engine:
         with self.lock:
             gid, self.last_captured = self.last_captured, None
             if gid:
+                gone = file_names(self.gesture(gid) or {})
                 self.profile["gestures"] = [g for g in self.profile["gestures"] if g["id"] != gid]
+                self._drop_photos(gone)
                 self.save()
                 self.rebuild()
         self.emit(self.snapshot())
@@ -1165,9 +1397,13 @@ class Engine:
     def tick(self):
         with self.lock:
             now = self.clock()
+            if self.capture is not None and self.capture.get("style") == "countdown" \
+                    and self.capture["phase"] == "perform":
+                self._take_tick(now)
             if self.capture is not None:
                 if now - self.capture["started"] > CAPTURE_TIMEOUT_S and self.capture["phase"] == "perform":
-                    self.capture = None
+                    c, self.capture = self.capture, None
+                    self._drop_photos(c.get("photo_files"))
                     self.emit({"type": "capture", "phase": "cancelled", "message": "Timed out"})
                 else:
                     self.emit({"type": "capture", **self._capture_public()})
@@ -1272,8 +1508,10 @@ class Engine:
                     self.keys.release(g["id"])
             elif name == "delete_gesture":
                 self.keys.release(op.get("id"))
+                gone = file_names(self.gesture(op.get("id")) or {})
                 self.profile["gestures"] = [g for g in self.profile["gestures"]
                                             if g["id"] != op.get("id")]
+                self._drop_photos(gone)
             elif name == "move_gesture":
                 gs = self.profile["gestures"]
                 g = self.gesture(op.get("id"))
@@ -1284,6 +1522,8 @@ class Engine:
             elif name == "clear_samples":
                 g = self.gesture(op.get("id"))
                 if g is not None:
+                    gone = file_names(g.pop("photos", None) or [])
+                    self._drop_photos(gone)
                     if g["kind"] == "pose":
                         g["samples"] = []
                     elif g["kind"] == "motion":
@@ -1297,9 +1537,11 @@ class Engine:
                 i = int(op.get("index", -1))
                 if g is not None and g["kind"] in ("motion", "move") and 0 <= i < len(g["templates"]):
                     g["templates"].pop(i)
-                    for k in ("paths", "skeletons"):
+                    gone = set()
+                    for k in ("paths", "skeletons", "photos"):
                         if i < len(g.get(k) or []):
-                            g[k].pop(i)
+                            gone |= file_names(g[k].pop(i) or {}) if k == "photos" else set()
+                    self._drop_photos(gone)
                     if g["kind"] == "move" and g["templates"]:
                         g["auto_scope"] = camera_moves.auto_scope(g["templates"])
             elif name == "clear_neutral":
@@ -1510,6 +1752,20 @@ class MoveScope:
         self.clf = camera_moves.MoveClassifier(points=pts, grounded=grounded)
         self.joiner = camera_moves.MoveJoiner()
         self.block = (-np.inf, set(), "")
+
+
+def _peak_host(dev, segment):
+    """Host time of the fastest moment of a weapon motion (where its photo is taken)."""
+    seg = np.asarray(segment)
+    return dev.clock.host(seg[int(np.argmax(np.linalg.norm(seg[:, 1:4], axis=1))), 0])
+
+
+def _peak_photo(rec):
+    """One frame of a take's photos (the peak) for small pictures: file, skeleton, aspect."""
+    if not rec or not rec.get("frames"):
+        return None
+    f = rec["frames"][min(rec.get("peak", 0), len(rec["frames"]) - 1)]
+    return {"file": f["file"], "lm": f.get("lm"), "aspect": rec.get("aspect"), "credit": rec.get("credit")}
 
 
 def move_scope(g):

@@ -31,6 +31,7 @@ class Rig:
         self.camera_on = True
         self.engine.on_device(R, True, {})
         self.engine.set_camera(ok=True, fps=30.0, message="")
+        self.engine.settings["capture_style"] = "free"     # these tests are about recognition
 
     def play(self, offset=(0, 0, 0), with_return=True, rest=0.4):
         moves = MELEE_GESTURES["slash_left"]
@@ -167,3 +168,32 @@ def test_weapon_only_scope_ignores_the_camera(rig):
     rig.engine.handle({"op": "update_gesture", "id": high, "fields": {"scope": "weapon"}})
     assert high not in rig.engine.swing_clf.fused
     assert rig.engine.public_gesture(rig.engine.gesture(high))["scope"] == "weapon"
+
+
+def _hold(rig, seconds, gyro_offset):
+    """The weapon held still in guard (the camera sees it), the gyro reading `gyro_offset`."""
+    t, g, a, hand = simulate([Stroke(seconds)], ARM, rig.rng, human_variation(rig.rng), pre=0.0, post=0.0,
+                             with_hand=True)
+    frames = rig.cam.frames(t, {"right": GUARD["melee"] + hand}, rig.rng)
+    base, fi = rig.clock_t, 0
+    for i in range(len(t)):
+        rig.sensor_t += 1 / 200
+        rig.clock_t = base + t[i]
+        while fi < len(frames) and base + frames[fi][0] <= rig.clock_t:
+            rig.engine.on_pose(frames[fi][1], frames[fi][2], base + frames[fi][0])
+            fi += 1
+        rig.engine.on_imu(R, rig.sensor_t, g[i] + gyro_offset, a[i])
+
+
+def test_swings_back_to_guard_dont_look_like_gyro_drift(rig):
+    dev = rig.engine.devices[R]
+    dev.cal.bias_log.clear()
+    for _ in range(6):
+        rig.play()                       # each with its slow swing back to guard
+        _hold(rig, 0.3, 0.0)
+    worst = max((b for _, b, src in dev.cal.bias_log if src == "camera"), default=0.0)
+    assert np.degrees(worst) < 0.6, f"re-zeroed to {np.degrees(worst):.1f} deg/s during swings"
+    # A real offset is still found when you hold still for a few seconds (to within the hand's sway).
+    offset = np.radians([12.0, -10.0, 8.0])                 # 17.5 deg/s
+    _hold(rig, 6.0, offset)
+    assert np.degrees(np.linalg.norm(dev.cal.bias - offset)) < 5.0

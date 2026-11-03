@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-02",
+ "generated": "2026-11-03",
  "real_gyro": {
   "source": "6DMG: 28 people, handheld gyro + accelerometer (CC BY 4.0)",
   "sets": [
@@ -579,7 +579,7 @@
     "true_offset_deg_s": 19.9
    },
    "+ camera stillness": {
-    "offset_error_at_end_deg_s": 2.6,
+    "offset_error_at_end_deg_s": 11.3,
     "correct_pct": 97.5,
     "true_offset_deg_s": 19.9
    }

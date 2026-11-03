@@ -22,6 +22,7 @@ class Rig:
         self.keys = KeyOutput(dry_run=True, tap_ms=1)
         self.engine = Engine(str(tmp_path / "p.json"), self.keys, clock=lambda: self.clock_t,
                              front_app=lambda: self.front, profiles_dir=str(tmp_path))
+        self.engine.settings["capture_style"] = "free"     # these tests are about recognition
         self.events = []
         self.engine.listeners.append(self.events.append)
         self.rng = np.random.default_rng(11)

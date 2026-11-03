@@ -243,3 +243,58 @@ table.grid td.miss { background: rgba(245,181,68,.12); color: #f7d08a; }
 @media (max-width: 720px) { .barrow > span:first-child { width: 84px; } .drill-name { font-size: 28px; } }
 
 .banner.info { background: rgba(122,162,255,.08); border: 1px solid rgba(122,162,255,.4); color: #c9d6ff; }
+
+/* Capture, like recording software */
+.modal-back.center { justify-content: center; align-items: center; }
+.modal.wide { width: min(820px, 100%); }
+.cap-stage { border: 3px solid #1e2330; transition: border-color .15s; }
+.cap-stage.recording { border-color: #ff3b3b; box-shadow: 0 0 0 4px rgba(255,59,59,.18); }
+.cap-stage img.preview-img:not(.live) { visibility: hidden; }
+.cap-over { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; pointer-events: none; text-shadow: 0 2px 18px rgba(0,0,0,.85); }
+.cap-count { font-family: "Chakra Petch", Inter, sans-serif; font-size: 150px; font-weight: 700; line-height: 1; color: #fff; }
+.cap-count.go { color: #ff6b3d; font-size: 110px; }
+.cap-sub { font-size: 20px; font-weight: 600; color: #e8eaf0; }
+.cap-rec { position: absolute; top: 12px; left: 14px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #fff; background: rgba(0,0,0,.45); padding: 4px 10px; border-radius: 8px; }
+.cap-rec i { width: 12px; height: 12px; border-radius: 50%; background: #ff3b3b; animation: recblink 1s steps(2) infinite; }
+@keyframes recblink { 50% { opacity: .25; } }
+.cap-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(0,0,0,.4); }
+.cap-bar i { display: block; height: 100%; background: #ff3b3b; }
+.cap-result { font-family: "Chakra Petch", Inter, sans-serif; font-size: 34px; font-weight: 700; padding: 10px 18px; border-radius: 12px; background: rgba(0,0,0,.55); max-width: 90%; text-align: center; }
+.cap-result.ok { color: #7ff0c6; }
+.cap-result.again { color: #ffd27a; font-size: 22px; }
+.cap-nocam { position: absolute; left: 12px; bottom: 12px; font-size: 12px; color: #a7aec0; }
+.cap-hud { min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 12px; background: #0b0d12; border: 2px solid #1e2330; }
+.cap-hud.recording { border-color: #ff3b3b; }
+.cap-hud .cap-count { font-size: 72px; }
+.cap-hud .cap-count.go { font-size: 54px; }
+.cap-hud .cap-result { font-size: 20px; }
+@media (prefers-reduced-motion: reduce) { .cap-rec i { animation: none; } }
+
+/* Photos of you doing it, skeleton on top. Hover a tile (or a big photo) to play the take. */
+svg.photo { display: block; width: 100%; height: 100%; }
+svg.photo .fr { opacity: 0; }
+svg.photo .fr.pk { opacity: 1; }
+.tile:hover svg.photo.flip .fr, .big-photo:hover svg.photo.flip .fr {
+  animation-name: var(--an); animation-duration: var(--dur); animation-delay: var(--dl);
+  animation-timing-function: step-end; animation-iteration-count: infinite;
+}
+@keyframes fr2 { 0% { opacity: 1 } 50% { opacity: 0 } 100% { opacity: 0 } }
+@keyframes fr3 { 0% { opacity: 1 } 33.333% { opacity: 0 } 100% { opacity: 0 } }
+@keyframes fr4 { 0% { opacity: 1 } 25% { opacity: 0 } 100% { opacity: 0 } }
+@keyframes fr5 { 0% { opacity: 1 } 20% { opacity: 0 } 100% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .tile:hover svg.photo.flip .fr, .big-photo:hover svg.photo.flip .fr { animation: none; } }
+.frame.big-photo { border-radius: 10px; max-width: 520px; border: 1px solid var(--line); }
+.take-photo { aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #07080b; }
+.credit { display: block; margin-top: 4px; }
+.cap-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.cap-take { flex: 0 0 auto; width: 76px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.cap-take > svg, .cap-take > span { width: 76px; height: 76px; border-radius: 8px; overflow: hidden; background: #07080b; border: 1px dashed #2a3040; }
+.cap-take > span { display: grid; place-items: center; color: #4a5268; font: 600 18px Inter, sans-serif; }
+.cap-take.done > svg, .cap-take.done > span { border: 1px solid #2f6f5c; }
+.cap-take.done > span { color: var(--ok); }
+.cap-take.fresh > svg { border-color: var(--ok); box-shadow: 0 0 0 3px rgba(79,209,165,.25); }
+.cap-take small { font-size: 11px; color: #8a93a8; }
+.tile .frame .badge { display: block; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .frame .badge .dot { margin-right: 6px; vertical-align: 1px; }
+.tile .frame .badge.right { max-width: calc(45% - 12px); }
+.tile .frame:has(.badge.right) .badge:not(.right) { max-width: calc(55% - 18px); }

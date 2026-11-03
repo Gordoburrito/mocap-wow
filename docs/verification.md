@@ -180,8 +180,9 @@ Turning 30° away drops it to 140/180 (0 wrong); a much sloppier player gets 166
   moves on, mount left 3.9° off. Learning from the gyro alone: 74.2% by the end, 26.5° off. With
   no slip it stayed within 3.1°.
 - A never-calibrated gyro, ~20°/s offset drifting up 40% as it warms: the gyro-only tracker never
-  sees "still" and ends 33.8°/s off (79.3% of moves right); with camera stillness, 2.6°/s off and
-  97.5% right.
+  sees "still" and ends 33.8°/s off (79.3% of moves right); with camera stillness, 11.3°/s off and
+  97.5% right. (Camera stillness waits for a swing to settle: without that, 18 wrong re-zeroings
+  in 25 s of simulated sword swings, up to 5.9°/s; with it, none in three runs.)
 
 The simulation caught four real bugs, all fixed:
 1. A held-back move didn't lock out its own swing back, so the return fired the mirror move

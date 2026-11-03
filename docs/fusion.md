@@ -131,7 +131,14 @@ the camera. With the 9-move set, 71% waited.
 | Never-calibrated Joy-Con, ~20°/s gyro offset drifting as it warms | Offset left at the end | Moves right |
 |---|---|---|
 | Gyro-only drift tracker | 33.8°/s | 79.3% |
-| + camera stillness | 2.6°/s | 97.5% |
+| + camera stillness | 11.3°/s | 97.5% |
+
+Camera stillness only counts once a swing has settled (1 s after the weapon last moved, judged
+0.3 s late): the slow end of a swing back to guard, and the gentle start of the next swing, look
+still to the camera but aren't. Without that rule the simulated app re-zeroed the gyro wrongly
+18 times in 25 s of sword swings (by up to 5.9°/s); with it, never in three runs. The cost is
+slower tracking in this non-stop test (it was 2.6°/s left without the rule), with moves just as
+right.
 
 ## Limits
 

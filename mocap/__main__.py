@@ -89,6 +89,13 @@ def selftest(data_dir):
     except Exception as exc:
         out["pose_model"] = f"FAILED: {exc}"
     try:
+        from .demo import PHOTOS_DIR
+        credits = json.loads((PHOTOS_DIR / "credits.json").read_text())
+        found = sum((PHOTOS_DIR / c["file"]).is_file() for c in credits.values())
+        out["demo_photos"] = f"ok, {found} of {len(credits)}" if found == len(credits) else f"MISSING: {found} of {len(credits)}"
+    except Exception as exc:
+        out["demo_photos"] = f"FAILED: {exc}"
+    try:
         from .controllers import Controllers
         import sdl2
         Controllers(None).init()
@@ -133,7 +140,7 @@ class Running:
         self.profile_path = args.profile or str(profiles_dir / "default.json")
         self.keys = KeyOutput(dry_run=args.dry_run)
         self.engine = Engine(self.profile_path, self.keys, profiles_dir=str(profiles_dir),
-                             metrics_dir=str(data / "metrics"))
+                             metrics_dir=str(data / "metrics"), photos_dir=str(data / "photos"))
         self.engine.demo = bool(args.demo)
         self.engine.on_open_demo = launch_demo
         self.stop = threading.Event()

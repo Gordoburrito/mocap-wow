@@ -41,12 +41,22 @@ async def main():
 
         await op({"op": "settings", "fields": {"require_wow_front": False}})
         await wait(1.5)
+        async def takes(body):
+            """Countdown capture: do the move once in each recording window."""
+            for _ in range(12):
+                c = (await state())["capture"]
+                if c is None or c["phase"] != "perform":
+                    return
+                while (await state())["capture"]["take_phase"] != "recording":
+                    await wait(0.05)
+                await post(body)
+                while ((await state())["capture"] or {}).get("take_phase") in ("recording", "checking", "review"):
+                    await wait(0.05)
+
         for name, body in (("Kick", "kick"), ("Duck", "duck"), ("Shove", "shove")):
             await op({"op": "capture_start", "trigger": "ui", "kind": "move"})
-            await wait(1.0)
-            for _ in range(5):
-                r = await post({"body": body})
-                await wait(r["seconds"] + 1.9)          # settle longer than the 1.5 s join window
+            await wait(0.3)
+            await takes({"body": body})
             st = await state()
             c = st["capture"]
             print(f"  {name}: {c['phase'] if c else 'gone'}, {c['count'] if c else '?'} takes")
@@ -59,10 +69,8 @@ async def main():
             await op({"op": "capture_save"})
             await wait(0.6)
         await op({"op": "capture_start", "trigger": "ui"})
-        await wait(0.9)
-        for _ in range(5):
-            r = await post({"role": "melee", "gesture": "slash_left"})
-            await wait(r["seconds"] + 0.35)
+        await wait(0.3)
+        await takes({"role": "melee", "gesture": "slash_left"})
         c = (await state())["capture"]
         print("  Slash:", c and (c["phase"], c["kind"], c["count"], c["message"]))
         if c and c["phase"] == "perform":
@@ -76,7 +84,9 @@ async def main():
         st = await state()
         for g in st["gestures"]:
             print("  gesture", g["name"], g["kind"], g["key_label"], g["count"], "takes", "margin",
-                  (g.get("calibration") or {}).get("margin"))
+                  (g.get("calibration") or {}).get("margin"), "photos", sum(1 for x in g.get("take_photos") or [] if x))
+        photos = [sum(1 for x in g.get("take_photos") or [] if x) for g in st["gestures"]]
+        print("photos of every take:", "OK" if all(n == g["count"] for n, g in zip(photos, st["gestures"])) else "MISSING", photos)
         await op({"op": "set_armed", "value": True})
         await wait(0.5)
         async with s.get(B + "/api/debug") as r:

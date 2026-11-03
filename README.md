@@ -65,11 +65,22 @@ whether key output is allowed.
 
 ## Capturing a move
 
-1. **Tap the weapon shafts together** (not the tips), press **⌥C**, or click **Capture**.
-2. **Do the move 5 times**, pausing between takes. The engine works out which weapon moved (or
-   that you're holding a pose), ignores your swings back to guard, and buzzes the weapon per
-   take. With the webcam on, each take also records your hand's path.
-3. **Press the key** you bound in WoW, name it, and **Save and go live**.
+1. **Tap the weapon shafts together** (not the tips), press **⌥C**, or click **Capture**. You see
+   yourself on the webcam with your skeleton drawn on top.
+2. **Each take: 3, 2, 1, GO**, then 2.5 s of recording (red border, REC timer): do the move once.
+   "✓ Take 1 of 5", and the next countdown starts; if it didn't catch anything it says so and
+   asks again. It works out whether you swung a weapon, did a body move or held a pose (or
+   press "It's a pose" / "It's a body move"). With the webcam on, weapon takes also record
+   your hand's path. Countdown and recording length are on the Engine page, which also has
+   the old "just do it 5 times" style.
+3. Each kept take lands in the **take strip** under the video: a photo of you at the peak of
+   the take with your skeleton on top.
+4. **Press the key** you bound in WoW, name it, and **Save and go live**.
+
+Every gesture keeps photos of you doing it: a few webcam frames per take (start, peak, end)
+with the skeleton found on each. Tiles show your most typical take (hover to play it); a
+gesture's page shows every take. They stay on your Mac, in the data folder
+(`~/Library/Application Support/Mocap/photos`), and go when you remove the take or gesture.
 
 ## Playing
 
@@ -88,7 +99,7 @@ stomp, a duck, a two-handed shove, a wave: the webcam cuts each one out of the v
 where your hands, elbows, feet, knees and body went. Each move is judged only on the part of you
 that does it (auto, or pick: an arm, a leg, both, whole body), so raising your arm works whatever
 your legs are doing; poses can be scoped the same way, and weapon motions can ignore the camera.
-Tiles show your actual recorded skeleton.
+Tiles show a photo of you doing it, with your skeleton and the path of what it's judged on.
 
 On real people (UTD-MHAD video, 8 people), the camera alone got **94.0% of 21 arm actions right
 with 0.1% wrong keys**, better than a wrist gyro (87.8%, 0.9% wrong), and 23 of 27 actions

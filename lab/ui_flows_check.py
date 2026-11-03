@@ -59,7 +59,7 @@ class Browser:
                 return m.get("result", {})
 
     async def js(self, expr):
-        r = await self.cmd("Runtime.evaluate", expression=expr, returnByValue=True)
+        r = await self.cmd("Runtime.evaluate", expression=expr, returnByValue=True, awaitPromise=True)
         return r.get("result", {}).get("value")
 
     async def exists(self, selector):
@@ -172,6 +172,25 @@ async def flows(b, report):
             await b.go("#/library")
         await check("Metrics shows history and lab data; HUD shows what fired", metrics_data)
 
+        async def photos():
+            with_photo = [g for g in state()["gestures"] if g.get("photo")]
+            if not with_photo:
+                return
+            await b.go("#/library")
+            for g in with_photo:
+                expect(await b.exists(f'.tile[data-gid="{g["id"]}"] svg.photo image'), f"{g['name']}: no photo on its tile")
+            # Every photo on the page actually loads, as a JPEG.
+            bad = await b.js("""(async () => { const out = [];
+                for (const im of document.querySelectorAll('svg.photo image')) {
+                  const r = await fetch(im.getAttribute('href'));
+                  if (!r.ok || r.headers.get('content-type') !== 'image/jpeg') out.push(im.getAttribute('href')); }
+                return out; })()""")
+            expect(not bad, f"photos that don't load: {bad[:3]}")
+            await b.go(f"#/gesture/{with_photo[0]['id']}")
+            expect(await b.exists(".big-photo svg.photo image"), "gesture page has no big photo")
+            await b.go("#/library")
+        await check(f"Photos on tiles and pages load ({len([g for g in state()['gestures'] if g.get('photo')])} gestures)", photos)
+
     # ------------------------------------------------------------- pages
     async def pages():
         for page, heading in (("engine", "Engine"), ("metrics", "Metrics"), ("library", "Library")):
@@ -216,9 +235,17 @@ async def flows(b, report):
     await check("Capture: open (button, sidebar) → Cancel / Escape / It's a pose / It's a body move", capture_exits)
 
     async def body_takes():
-        for _ in range(5):
-            r = sim({"body": "kick"})
-            await asyncio.sleep(r["seconds"] + 1.9)
+        """Countdown capture: kick once in each recording window, like a person would."""
+        for _ in range(12):
+            c = state()["capture"]
+            if c is None or c["phase"] != "perform":
+                return
+            t0 = time.time()
+            while (state()["capture"] or {}).get("take_phase") != "recording" and time.time() - t0 < 10:
+                await asyncio.sleep(0.05)
+            sim({"body": "kick"})
+            while (state()["capture"] or {}).get("take_phase") in ("recording", "checking", "review"):
+                await asyncio.sleep(0.05)
 
     async def bind_phase():
         await b.click('[data-act=capture].capture-btn')
@@ -226,6 +253,9 @@ async def flows(b, report):
         await b.click(".modal [data-act=capture-move]")
         await body_takes()
         expect((state()["capture"] or {}).get("phase") == "bind", "didn't reach the key step")
+        if state()["camera"]["ok"]:
+            shown = await b.js("document.querySelectorAll('.modal .cap-take svg.photo image').length")
+            expect(shown >= 3, f"the key step shows {shown} take photos")
         await b.click(".modal [data-act=capture-redo]")
         await asyncio.sleep(0.8)
         c = state()["capture"]

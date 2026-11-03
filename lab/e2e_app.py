@@ -30,10 +30,22 @@ async def main():
                      ("High slash", "slash_left", HIGH, {"code": "Digit2", "mods": []}),
                      ("Low slash", "slash_left", LOW, {"code": "Digit3", "mods": []}),
                      ("Chop", "overhead_chop", None, {"code": "Digit4", "mods": []})]
+            async def takes(body):
+                """Countdown capture: do the move once in each recording window."""
+                for i in range(12):
+                    c = (await state())["capture"]
+                    if c is None or c["phase"] != "perform":
+                        return
+                    while (await state())["capture"]["take_phase"] != "recording":
+                        await wait(0.05)
+                    await post(body)
+                    while ((await state())["capture"] or {}).get("take_phase") in ("recording", "checking"):
+                        await wait(0.05)
+                    while ((await state())["capture"] or {}).get("take_phase") == "review":
+                        await wait(0.05)
             for name, g, off, key in moves:
-                await op({"op": "capture_start", "trigger": "ui"}); await wait(0.9)
-                for i in range(5):
-                    r = await post({"role": "melee", "gesture": g, "offset": off}); await wait(r["seconds"] + 0.35)
+                await op({"op": "capture_start", "trigger": "ui"}); await wait(0.3)
+                await takes({"role": "melee", "gesture": g, "offset": off})
                 st = await state(); c = st["capture"]
                 if c and c["phase"] == "perform":
                     await op({"op": "capture_finish"}); await wait(0.4)
@@ -41,7 +53,10 @@ async def main():
                 await op({"op": "capture_save"}); await wait(0.6)
             st = await state()
             for gg in st["gestures"]:
-                print("  gesture", gg["name"], gg["key_label"], "takes", gg["count"], "camera takes", gg.get("camera_takes"), "uses camera", gg.get("uses_camera"), "twins", gg.get("twins"))
+                print("  gesture", gg["name"], gg["key_label"], "takes", gg["count"], "camera takes", gg.get("camera_takes"), "uses camera", gg.get("uses_camera"), "twins", gg.get("twins"),
+                      "photos", sum(1 for x in gg.get("take_photos") or [] if x))
+            photos = [sum(1 for x in gg.get("take_photos") or [] if x) for gg in st["gestures"]]
+            print("photos of every take:", "OK" if all(n == gg["count"] for n, gg in zip(photos, st["gestures"])) else "MISSING", photos)
             print("fusion:", st["fusion"], "devices:", [(d["name"], d["side"], d["hand_found"], d["hand_scores"]) for d in st["devices"]])
             await op({"op": "set_armed", "value": True}); await wait(0.3)
             seq = [("slash_left", None), ("slash_left", HIGH), ("overhead_chop", None), ("slash_left", LOW),

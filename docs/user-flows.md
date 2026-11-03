@@ -55,7 +55,7 @@ flowchart LR
 | Metrics | Sidebar; ⚔ → Accuracy test… | Sidebar |
 | Live HUD (in the window) | Sidebar | "← Back to the app"; Escape; sidebar is not shown here |
 | HUD panel over the game | ⚔ → HUD over the game; `--overlay` | Its ✕ button; ⚔ → HUD over the game again; ▴ collapses it |
-| Quick capture | Capture a move; sidebar Capture; ⌥C; tap the shafts together; Add takes / Re-record all; + Pose; + Body move | Cancel; Escape; Save and go live; Redo (starts over); times out after 40 s doing nothing |
+| Capture (3-2-1 takes, live video + skeleton) | Capture a move; sidebar Capture; ⌥C; tap the shafts together; Add takes / Re-record all; + Pose; + Body move | Cancel; Escape; Save and go live; Redo (starts over); times out 40 s after your last kept take |
 | Choosing a key (gesture page) | Click the key chip | Press a key; Escape; click anywhere else |
 | Calibrate a weapon | Engine → a weapon → Calibrate | Cancel; Escape; Done on the summary |
 | Neutral recording | Engine → Record 6 s | Cancel; Escape; finishes by itself |
@@ -65,6 +65,10 @@ flowchart LR
 | "Wasn't me" (HUD) | Something fired | Press it (marks it wrong); fades after 15 s |
 | Delete a gesture | Gesture page → Delete gesture | Click again to delete; wait 3 s and it backs off |
 | Demo window | ⚔ → Open the demo; Library → Try it with sample data (empty Library) | Close it or ⌘Q (it's a separate app instance) |
+
+Photos of your takes are files in the data folder; removing a take, clearing, deleting a gesture,
+Undo, Cancel and Redo all delete the photos nothing uses any more (a copied profile keeps the ones
+it shares).
 
 ## 1. First-time setup
 
@@ -83,9 +87,28 @@ flowchart LR
 
 ## 2. Capture a move
 
+Like recording software: you see yourself on the webcam with your skeleton on top, each take is
+a countdown and a short recording, and each kept take's photo (its peak, skeleton on top) lands
+in the take strip under the video. The gesture keeps those photos: its tile plays your most
+typical take on hover and its page shows every take.
+
 ```mermaid
 flowchart LR
-    A([Capture: button · ⌥C · tap shafts]) --> B{What did you do?}
+    S([Capture: button · ⌥C · tap shafts]) --> C3[3 · 2 · 1, beeps]
+    C3 --> R[GO: record 2.5 s<br/>red border, REC timer]
+    R --> J{Caught a move?}
+    J -- yes --> K1[✓ Take n of 5<br/>its photo joins the take strip] --> N{5 takes?}
+    J -- no --> A1[Didn't catch it: again] --> C3
+    N -- no --> C3
+    N -- yes --> Key[Press the key, name it, Save]
+    S -. Cancel · Escape, any time .-> Out([closed, nothing saved])
+```
+
+What it decides from the first take (or press "It's a pose" / "It's a body move"):
+
+```mermaid
+flowchart LR
+    A([First take]) --> B{What did you do?}
     B -- swung a weapon --> M[Weapon motion<br/>5 takes, it buzzes each one]
     B -- held a pose --> P[Pose, 2 s]
     B -- moved with weapons still --> V[Body move, 5 takes<br/>judged on what moved]
@@ -168,8 +191,9 @@ back; every gesture's tile to its page and back; the Library filters; changing "
 back; capture opened three ways and left by Cancel, Escape, It's a pose, It's a body move; a body
 move captured through the key step, Redo, Escape, then saved with a real key press; the key
 step's Cancel; the HUD's ✕; a gesture's key chip and Escape; Delete backing off by itself;
-Calibrate, Neutral and the accuracy test each left by their button and by Escape; and no
-JavaScript errors anywhere.
+Calibrate, Neutral and the accuracy test each left by their button and by Escape; every photo
+on the tiles and gesture pages loads; the key step shows the takes' photos; and no JavaScript
+errors anywhere.
 
 Walking it found and fixed:
 1. **Cancel didn't work** (nor any button, sometimes): the page redrew 20 times a second during
