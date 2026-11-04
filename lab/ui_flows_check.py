@@ -28,6 +28,18 @@ def state():
     return json.load(urllib.request.urlopen(APP + "/api/state"))
 
 
+def debug():
+    return json.load(urllib.request.urlopen(APP + "/api/debug"))
+
+
+async def _wait(cond, seconds=3.0):
+    for _ in range(int(seconds / 0.1)):
+        if cond():
+            return True
+        await asyncio.sleep(0.1)
+    return cond()
+
+
 def sim(body):
     req = urllib.request.Request(APP + "/api/sim", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json"})
@@ -301,6 +313,28 @@ async def flows(b, report):
         await b.click(".modal [data-act=capture-cancel]")
         expect(state()["capture"] is None, "Cancel on the key step didn't close")
     await check("Capture, key step → Cancel", bind_cancel)
+
+    async def practice_page():
+        await b.click('.side .nav a[href="#/practice"]')
+        expect(await b.js("location.hash") == "#/practice", "Practice didn't open")
+        expect(await _wait(lambda: state()["practice"]), "keys didn't turn off for practice")
+        before = len(debug()["sent"] or [])
+        if not state()["demo"]:
+            g = next((g for g in state()["gestures"] if g["kind"] == "move" and g["ready"]), None)
+            expect(g is not None, "nothing to practise")
+            sim({"body": "kick"})               # the walk captured a kick on K
+        shown = False
+        for _ in range(150):                    # the demo player makes a move every few seconds
+            if await b.exists(".prac-card.hit, .prac-card.near, .prac-card.miss"):
+                shown = True
+                break
+            await asyncio.sleep(0.1)
+        expect(shown, "no result after a move")
+        expect(await b.js("document.querySelector('.prac-card .prac-name').textContent.trim().length") > 0, "empty result")
+        expect(len(debug()["sent"] or []) == before, "a key was sent while practising")
+        await b.click('.side .nav a[href="#/library"]')
+        expect(await _wait(lambda: not state()["practice"]), "keys didn't come back after leaving Practice")
+    await check("Practice: keys off → do a move → it shows which → leave → keys back", practice_page)
 
     # ------------------------------------------------------------- HUD toast + gesture page
     async def toast():

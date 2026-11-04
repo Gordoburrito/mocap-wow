@@ -325,3 +325,35 @@ a.btn:hover { border-color: #4a5268; }
   padding: 16px 18px; border-radius: 12px; background: rgba(11,13,17,.85); border: 1px solid #2a3040; }
 .cam-slot { min-width: 0; }
 .banner.row { display: flex; gap: 12px; align-items: center; }
+
+/* Practice: which move it saw, big; your camera; the moves you've hit. */
+.prac-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 980px) { .prac-layout { grid-template-columns: minmax(0, 1fr); } }
+.prac-layout .cam-stage { max-height: 46vh; }
+.prac-card { display: flex; gap: 18px; align-items: center; padding: 16px; border-radius: 14px; background: var(--panel); border: 2px solid var(--line); min-height: 150px; }
+.prac-card.hit { border-color: var(--ok); box-shadow: 0 0 0 4px rgba(79,209,165,.12); animation: prac-in .25s ease-out; }
+.prac-card.near { border-color: rgba(245,181,68,.6); animation: prac-in .25s ease-out; }
+.prac-card.miss { border-color: #3a4152; animation: prac-in .25s ease-out; }
+.prac-card.idle { flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; }
+.prac-pic { flex: 0 0 240px; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #07080b; }
+.prac-pic:empty { display: none; }
+.prac-pic svg { display: block; width: 100%; height: 100%; }
+.prac-name { font-family: "Chakra Petch", Inter, sans-serif; font-size: 34px; line-height: 1.1; }
+.prac-card.miss .prac-name { font-size: 22px; font-family: Inter, sans-serif; }
+.prac-score { display: flex; flex-direction: column; align-items: flex-end; }
+.prac-score b { font-family: "Chakra Petch", Inter, sans-serif; font-size: 34px; line-height: 1; }
+.prac-flash { position: absolute; left: 0; right: 0; top: 18%; display: flex; justify-content: center; pointer-events: none; }
+.prac-pop { display: flex; gap: 12px; align-items: center; padding: 12px 20px; border-radius: 14px; background: rgba(11,13,17,.86);
+  font-family: "Chakra Petch", Inter, sans-serif; font-size: 34px; border: 2px solid #3a4152; animation: prac-pop 2.5s ease-out forwards; }
+.prac-pop.hit { color: #b9eedb; border-color: var(--ok); }
+.prac-pop.near, .prac-pop.held { color: #f7d08a; border-color: rgba(245,181,68,.7); }
+.prac-pop.miss { color: #c3c9d6; font-size: 24px; }
+@keyframes prac-pop { 0% { transform: scale(.8); opacity: 0 } 8% { transform: scale(1.04); opacity: 1 } 14% { transform: scale(1) } 80% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes prac-in { from { transform: translateY(4px); opacity: .4 } to { transform: none; opacity: 1 } }
+.prac-moves { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.prac-move { padding: 8px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; font-size: 13px; transition: border-color .3s, box-shadow .3s; }
+.prac-move.done { border-color: #2d6b58; }
+.prac-move.lit { border-color: var(--ok); box-shadow: 0 0 0 4px rgba(79,209,165,.25); }
+.prac-move-pic { aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #07080b; }
+.prac-move-pic svg { display: block; width: 100%; height: 100%; }
+@media (prefers-reduced-motion: reduce) { .prac-pop, .prac-card { animation: none; } }

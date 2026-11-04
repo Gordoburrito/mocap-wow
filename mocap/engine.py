@@ -47,6 +47,7 @@ TRAIL_JOINTS = {"left_arm": [15], "right_arm": [16], "arms": [15, 16], "left_leg
 CAPTURE_READY_S = 1.2           # ignore everything right after a capture starts (the clash itself)
 CAPTURE_TIMEOUT_S = 40.0
 POSE_CAPTURE_S = 2.0
+PRACTICE_RETURN_S = 2.0      # Practice: no "didn't recognize" for this long after a hit (the way back)
 STILL_WINDOW_S = 0.5         # the camera must see the weapon hand still this long to re-zero its gyro
 SETTLE_S = 1.0               # ...starting at least this long after a weapon motion (the slow end of a swing back)
 STILL_DELAY_S = 0.3          # ...and judged this much later (the gentle start of a swing looks still at first)
@@ -117,6 +118,10 @@ class Engine:
         self.binary_listeners = []
         self.rumble_q = queue.Queue()
         self.preview_wanted = False
+        self.practice = False                   # a window shows the Practice screen: recognize, send nothing
+        self._practice_last = -np.inf           # when the Practice screen last heard about a move
+        self._practice_hit = -np.inf            # ...and last saw one it recognized
+        self._practice_cut = None               # a whole-body move that nothing has reported yet
         self.preview_width = 480                # set by the server from what the open windows want
         self.preview_fps = 15
         self.camera = {"ok": False, "fps": 0.0, "message": "Starting camera…"}
@@ -388,6 +393,7 @@ class Engine:
                 "profile": {"name": self.profile["name"], "path": self.path,
                             "all": profiles.list_profiles(self.profiles_dir) if self.profiles_dir else []},
                 "armed": self.armed,
+                "practice": self.practice,
                 "gestures": [self.public_gesture(g) for g in self.profile["gestures"]],
                 "neutral_count": len(self.profile["neutral"]),
                 "ignore_counts": {r: len(s) for r, s in self.profile.get("ignore", {}).items()},
@@ -451,6 +457,10 @@ class Engine:
             if phase != "up" and g.get("action") != "arm_toggle":
                 self.drill.observe(g["id"], g["source"])
             return False
+        if self.practice:
+            self._practice(g["id"], "hit", match=match)
+            self._event(g, "practice", f"match {match:.2f}" if match is not None else "")
+            return False
         if g.get("action") == "arm_toggle":
             self.set_armed(not self.armed)
             self._event(g, "armed" if self.armed else "disarmed", sent=False)
@@ -478,6 +488,61 @@ class Engine:
         detail = f"match {match:.2f}" if match is not None else ("held" if phase == "down" else "")
         self._event(g, "sent", detail, sent=True)
         return True
+
+    def _decided(self, role, result, outcome, latency, waited_ms, name=None, kind="motion"):
+        """A move that didn't fire: into the play log, and onto the Practice screen."""
+        self.metrics.motion(role, result, outcome, latency, waited_ms, name, kind=kind)
+        if self.practice:
+            gid = None
+            if outcome == "near":
+                gid = result.get("near")
+            elif outcome == "held":
+                gid = held_back(result) if kind == "motion" else camera_moves_held(result)
+            self._practice(gid, outcome if outcome in ("near", "held") else "miss", result=result, source=role)
+
+    def _practice(self, gid, outcome, result=None, match=None, source=None):
+        """Tell the Practice screen what you just did: a hit, a near miss, a move held back, or
+        nothing recognized (with the closest move and why)."""
+        now = self.clock()
+        if outcome == "miss" and now - self._practice_hit < PRACTICE_RETURN_S:
+            return          # the way back to guard after a move it just recognized, not a new try
+        if outcome == "hit":
+            self._practice_hit = now
+        g = self.gesture(gid) if gid else None
+        matches = (result or {}).get("matches") or {}
+        if match is None and g is not None:
+            match = matches.get(g["id"], self.pose_matches.get(g["id"]))
+        self._practice_last = now
+        cid, cm = max(matches.items(), key=lambda kv: kv[1], default=(None, 0.0))
+        cg = self.gesture(cid) if cid else None
+        self.emit({"type": "practice", "outcome": outcome, "t": time.time(),
+                   "gid": g["id"] if g else None, "name": g["name"] if g else None,
+                   "key": binding_label(g.get("key")) if g and g.get("action", "key") == "key" else None,
+                   "source": source or (g["source"] if g else None),
+                   "match": round(float(match), 2) if match is not None else None,
+                   "closest": {"gid": cg["id"], "name": cg["name"], "match": round(float(cm), 2)} if cg else None,
+                   "reason": (result or {}).get("reason") or ""})
+
+    def _practice_tick(self, now):
+        """A whole-body move that no move (weapon, body, pose) reported within half a second:
+        tell the Practice screen it saw you move but didn't recognize it."""
+        cut = self._practice_cut
+        if cut is None or now < cut + 0.5:
+            return
+        self._practice_cut = None
+        if self.practice and self._practice_last < cut - 1.0:
+            self._practice(None, "miss", source="webcam")
+
+    def set_practice(self, on):
+        """The Practice screen is open somewhere: moves are recognized and shown, never sent."""
+        with self.lock:
+            on = bool(on)
+            if on == self.practice:
+                return
+            self.practice = on
+            if on:
+                self._release_all_holds()
+        self.emit(self.snapshot())
 
     def set_armed(self, value):
         with self.lock:
@@ -551,6 +616,8 @@ class Engine:
             lm = np.asarray(landmarks, dtype=float)
             self.move_frames.append((t, np.round(lm[:, [0, 1, 3]], 3), round(float(aspect), 4)))
         seg = self.move_seg.feed(t, landmarks, aspect)
+        if seg is not None and self.practice and self.capture is None and self._practice_cut is None:
+            self._practice_cut = self.clock()       # you moved: if no move reports it soon, say so
         if self.capture is not None:
             self._capture_move_tick(t)
             if seg is not None:
@@ -593,11 +660,11 @@ class Engine:
                              "match": result["matches"].get(ng["id"], 0), "t": time.time()}
                 self._event(ng, "near miss", f"match {self.near['match']:.2f} · not sent")
                 self.emit({"type": "near", **self._near_public()})
-                self.metrics.motion("webcam", result, "near", latency, None, ng["name"], kind="move")
+                self._decided("webcam", result, "near", latency, None, ng["name"], kind="move")
                 if self.drill is not None:
                     self.drill.observe(None, "webcam", "near miss: " + ng["name"])
             else:
-                self.metrics.motion("webcam", result, "held" if held else "rejected", latency, None, kind="move")
+                self._decided("webcam", result, "held" if held else "rejected", latency, None, kind="move")
             return
         self.move_fires.append((used[0, 0], used[-1, 0], sc.points))
         sc.block = (used[-1, 0] + camera_moves.MIRROR_WINDOW, sc.clf.mirrors.get(gid, set()), g["name"])
@@ -842,7 +909,7 @@ class Engine:
                 if hg is not None and result.get("twin"):
                     self._event(hg, "held back", "needs the camera to tell it apart from "
                                 + (self.gesture(result["twin"]) or {}).get("name", "another move"))
-                self.metrics.motion(dev.role, result, "held", latency, waited_ms, hg["name"] if hg else None)
+                self._decided(dev.role, result, "held", latency, waited_ms, hg["name"] if hg else None)
                 if self.drill is not None:
                     self.drill.observe(None, dev.role, result["reason"])
                 return
@@ -853,11 +920,11 @@ class Engine:
                              "match": result["matches"].get(ng["id"], 0), "t": time.time()}
                 self._event(ng, "near miss", f"match {self.near['match']:.2f} · not sent")
                 self.emit({"type": "near", **self._near_public()})
-                self.metrics.motion(dev.role, result, "near", latency, waited_ms, ng["name"])
+                self._decided(dev.role, result, "near", latency, waited_ms, ng["name"])
                 if self.drill is not None:
                     self.drill.observe(None, dev.role, "near miss: " + ng["name"])
             else:
-                self.metrics.motion(dev.role, result, "rejected", latency, waited_ms)
+                self._decided(dev.role, result, "rejected", latency, waited_ms)
             return
         dev.locked_until = segment[-1, 0] + self.settings["lockout_ms"] / 1000.0
         dev.mirror_block = (segment[-1, 0] + MIRROR_WINDOW, self.swing_clf.mirrors.get(g["id"], set()), g["name"])
@@ -1413,6 +1480,7 @@ class Engine:
                 else:
                     self.emit({"type": "capture", **self._capture_public()})
             self._neutral_tick(now)
+            self._practice_tick(now)
             if self.drill is not None:
                 self._drill_tick()
             for dev in self.devices.values():

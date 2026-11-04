@@ -23,6 +23,7 @@ flowchart LR
     end
     subgraph Window["App window: sidebar on every page"]
         Library <--> Camera["Camera: live view"]
+        Library <--> Practice["Practice: which move it saw"]
         Library <--> Engine
         Library <--> Metrics
         Library <--> HUD["Live HUD"]
@@ -54,6 +55,7 @@ flowchart LR
 | Library | Sidebar; "← Back to the app" from the HUD; breadcrumb on a gesture page | Sidebar; a tile; Capture |
 | Gesture page | A tile in the Library | "Library" breadcrumb; sidebar |
 | Camera (live view: you, big, with your skeleton; what's in frame; what it recognizes) | Sidebar; "See yourself on camera" (empty Library) | Sidebar; Capture a move (and back here after) |
+| Practice (do moves, see which one it saw; keys off) | Sidebar | Sidebar (keys back on); clicking into another app also turns keys back on |
 | Engine | Sidebar | Sidebar |
 | Metrics | Sidebar; ⚔ → Accuracy test… | Sidebar |
 | Live HUD (in the window) | Sidebar | "← Back to the app"; Escape; sidebar is not shown here |
@@ -170,7 +172,20 @@ flowchart LR
     A -- remounted a Joy-Con --> G[Engine: Calibrate that weapon]
 ```
 
-## 6. Checking accuracy
+## 6. Practising
+
+```mermaid
+flowchart LR
+    A([Sidebar → Practice<br/>keys off]) --> B[Do any of your moves]
+    B --> C{What did it see?}
+    C -- one of your moves --> H[✓ name, key, match %<br/>its tile lights up]
+    C -- close to one --> N[~ Almost: name, match %<br/>do it more like your takes, or loosen it]
+    C -- nothing it knows --> M[✗ Didn't recognize that<br/>why, and the closest move]
+    H & N & M --> B
+    A -. leave the page · click into WoW .-> K([keys back on])
+```
+
+## 7. Checking accuracy
 
 ```mermaid
 flowchart LR
@@ -191,7 +206,8 @@ flowchart LR
 `lab/ui_flows_check.py` drives the real UI in Chrome against the app with simulated hardware
 (and against the demo, with its 18 sample gestures), pressing and releasing the mouse and keys
 like a person, and checks the engine's state after each step: every page from the sidebar and
-back; the Camera page's live video and back out of a capture started there; every gesture's tile
+back; the Camera page's live video and back out of a capture started there; Practice turning
+keys off, showing the move the demo player did, and turning keys back on when you leave; every gesture's tile
 to its page and back; the Library filters; changing "Judged on" and
 back; capture opened three ways and left by Cancel, Escape, It's a pose, It's a body move; a body
 move captured through the key step, Redo, Escape, then saved with a real key press; the key

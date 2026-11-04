@@ -18,6 +18,7 @@ let ws = null;
 let S = null;                       // latest engine snapshot
 let route = parseRoute();
 const live = { pose: null, energy: {}, start: {} };
+const practice = { history: [], tally: {}, misses: 0 };     // this window's practice session
 const ui = { filter: "all", search: "", listening: null, toastUntil: 0, compact: false, calibDone: null, neutral: null, deleteArmed: null, camSkeleton: true, camVideo: true };
 
 function parseRoute() {
@@ -29,7 +30,7 @@ window.addEventListener("hashchange", () => { route = parseRoute(); render(true)
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.binaryType = "blob";
-  ws.onopen = () => { lastPreview = ""; syncPreview(); };
+  ws.onopen = () => { lastPreview = ""; lastPractice = null; syncPreview(); syncPractice(); };
   ws.onclose = () => { S && (S.disconnected = true); render(true); setTimeout(connect, 1000); };
   ws.onmessage = (e) => {
     if (e.data instanceof Blob) return showPreview(e.data);
@@ -38,13 +39,23 @@ function connect() {
   };
 }
 function send(op) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(op)); }
-document.addEventListener("visibilitychange", () => syncPreview());
+document.addEventListener("visibilitychange", () => { syncPreview(); syncPractice(); });
+window.addEventListener("focus", () => syncPractice());
+window.addEventListener("blur", () => syncPractice());
 
 // Ask for video only while this window shows it, and big and smooth while a live view (the
 // Camera page, a capture) fills the screen. Each window asks for itself.
 let lastPreview = "";
+// Practice (recognize, send nothing) only while the Practice page is on screen in a window you're
+// using: click into WoW and keys work again.
+let lastPractice = null;
+function syncPractice() {
+  const on = route.page === "practice" && !document.hidden && document.hasFocus();
+  if (on !== lastPractice && ws && ws.readyState === WebSocket.OPEN) { lastPractice = on; send({ op: "practice", on }); }
+}
+
 function syncPreview() {
-  const big = route.page === "camera" || (S?.capture && S.capture.phase === "perform" && S.capture.style === "countdown");
+  const big = route.page === "camera" || route.page === "practice" || (S?.capture && S.capture.phase === "perform" && S.capture.style === "countdown");
   const want = { op: "preview", on: !document.hidden && route.page !== "overlay", width: big ? 960 : 480 };
   const key = JSON.stringify(want);
   if (key !== lastPreview && ws && ws.readyState === WebSocket.OPEN) { lastPreview = key; send(want); }
@@ -63,6 +74,7 @@ const handlers = {
   near: (m) => { if (S) { S.near = m; render(); } },
   drill: onDrill,
   neutral: (m) => { ui.neutral = m.phase === "cancelled" ? null : m; if (m.phase === "done") setTimeout(() => { ui.neutral = null; render(); }, 2500); render(true); },
+  practice: onPractice,
   added: (m) => { if (m.id && route.page === "library" && m.focus) location.hash = `#/gesture/${m.id}`; },
 };
 
@@ -90,9 +102,10 @@ function render(force = false) {
   const page = route.page;
   if (page === "overlay" || page === "hud") { setHTML($("#root"), hudPage()); return; }
   const body = page === "gesture" ? gesturePage(route.id) : page === "engine" ? enginePage()
-    : page === "metrics" ? metricsPage() : page === "camera" ? cameraPage() : libraryPage();
+    : page === "metrics" ? metricsPage() : page === "camera" ? cameraPage() : page === "practice" ? practicePage() : libraryPage();
   if (setHTML($("#root"), `<div class="app">${sidebar()}<main class="main" id="main">${banners()}${body}</main></div>`)) afterRender();
   syncPreview();
+  syncPractice();
 }
 
 function afterRender() {
@@ -102,6 +115,7 @@ function afterRender() {
     if (stage.parentElement !== slot) slot.appendChild(stage);
     stage.classList.toggle("no-video", !ui.camVideo);
     setHTML($("#cam-over"), camOverlay());
+    setHTML($("#prac-flash"), route.page === "practice" ? practiceFlash() : "");
   }
   drawSkeleton();
   for (const [name, e] of Object.entries(live.energy)) setMeter(name, e, live.start[name]);
@@ -119,6 +133,7 @@ const ICONS = {
   library: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>`,
   capture: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`,
   camera: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3z"/></svg>`,
+  practice: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`,
   hud: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>`,
   engine: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>`,
   metrics: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
@@ -135,6 +150,7 @@ function sidebar() {
     <div class="nav">
       ${nav("library", "Library", "#/library")}
       ${nav("camera", "Camera", "#/camera")}
+      ${nav("practice", "Practice", "#/practice")}
       <a href="#" data-act="capture" class="">${ICONS.capture}Capture</a>
       ${nav("hud", "Live HUD", "#/hud")}
       ${nav("engine", "Engine", "#/engine")}
@@ -143,7 +159,7 @@ function sidebar() {
     <div class="arm-card">
       <div class="row between"><span class="muted" style="font-size:12px">Engine</span>
         <button class="arm-pill ${S.armed ? "on" : ""}" data-act="arm">${S.armed ? "ARMED" : "DISARMED"}</button></div>
-      <span style="font-size:12px;color:#a7aec0">${armHint()}</span>
+      <span style="font-size:12px;color:#a7aec0">${S.practice ? "Practising: keys are off until you leave Practice or click into WoW." : armHint()}</span>
     </div>
   </nav>`;
 }
@@ -665,7 +681,7 @@ function camStage() {
   if (!camStageEl) {
     camStageEl = document.createElement("div");
     camStageEl.className = "stage cam-stage";
-    camStageEl.innerHTML = `<div class="mirror"><img class="preview-img" alt="You, live from the webcam"><canvas class="skel-canvas cam-canvas"></canvas></div><div class="cam-over" id="cam-over" aria-live="polite"></div>`;
+    camStageEl.innerHTML = `<div class="mirror"><img class="preview-img" alt="You, live from the webcam"><canvas class="skel-canvas cam-canvas"></canvas></div><div class="cam-over" id="cam-over" aria-live="polite"></div><div class="prac-flash" id="prac-flash" aria-live="assertive"></div>`;
   }
   return camStageEl;
 }
@@ -736,6 +752,98 @@ function camSide() {
     <button class="primary" data-act="capture">${ICONS.capture}Capture a move</button></section>`;
 }
 
+// ------------------------------------------------------------------ practice
+
+// Do any of your moves and see which one it saw: a hit, a near miss (and how close), or nothing
+// (and why). Keys are off meanwhile.
+const PRACTICE_RANK = { hit: 3, held: 2, near: 2, miss: 1 };
+function onPractice(m) {
+  const cur = practice.history[0];
+  // One move can be seen a few ways at once (several body parts judged separately): keep the
+  // best reading of it, but keep two different moves done together.
+  if (cur && m.t - cur.t < 0.8) {
+    if (cur.outcome === "hit" && m.outcome !== "hit") return;
+    if (cur.outcome !== "hit") {
+      if (PRACTICE_RANK[m.outcome] < PRACTICE_RANK[cur.outcome]) return;
+      practice.history.shift();
+      tallyPractice(cur, -1);
+    }
+  }
+  practice.history.unshift(m);
+  if (practice.history.length > 30) practice.history.pop();
+  tallyPractice(m, 1);
+  if (route.page !== "practice") return;
+  if (m.outcome === "hit") { beep(880, 90, 0.1); beep(1320, 120, 0.08, 0.09); } else if (m.outcome !== "miss") beep(520, 140, 0.08);
+  render(true);
+  clearTimeout(onPractice.timer);
+  onPractice.timer = setTimeout(() => setHTML($("#prac-flash"), practiceFlash()), 2600);
+}
+function tallyPractice(m, by) {
+  if (m.outcome === "miss") { practice.misses += by; return; }
+  const t = practice.tally[m.gid] || (practice.tally[m.gid] = { hit: 0, near: 0 });
+  t[m.outcome === "hit" ? "hit" : "near"] += by;
+}
+
+const MISS_WHY = (r) => /too slow/.test(r) ? "Too slow: do it the way you recorded it."
+  : /too small/.test(r) ? "Too small: go bigger."
+  : /ignored/.test(r) ? "That looked like a move you told it to ignore."
+  : /too close between/.test(r) ? "It was between two of your moves."
+  : "It didn't look like any of your moves.";
+
+// The big result, over the video for a moment.
+function practiceFlash() {
+  const m = practice.history[0];
+  if (!m || Date.now() / 1000 - m.t > 2.5) return "";
+  const label = m.outcome === "hit" ? `✓ ${esc(m.name)}` : m.outcome === "miss" ? "✗ Didn't recognize that" : `~ Almost: ${esc(m.name)}`;
+  return `<div class="prac-pop ${m.outcome}" data-t="${m.t}"><b>${label}</b>${m.outcome === "hit" && m.key ? `<span class="key">${esc(m.key)}</span>` : ""}</div>`;
+}
+
+function practicePage() {
+  const ready = S.gestures.filter((g) => g.ready && g.enabled !== false);
+  if (!ready.length) {
+    return `<div class="head"><div class="lead"><h1>Practice</h1><p class="soft">Do your moves and see which one it saw.</p></div></div>
+      <div class="empty"><b>Nothing to practise yet.</b><span>Capture a move first: 3-2-1, do it five times, press its key.</span><div class="row wrap"><button class="primary" data-act="capture">Capture a move</button><a class="btn" href="#/camera">${ICONS.camera}Camera</a></div></div>`;
+  }
+  const m = practice.history[0];
+  const g = m && m.gid ? S.gestures.find((x) => x.id === m.gid) : null;
+  const pct = (v) => (v == null ? "" : `${Math.round(v * 100)}%`);
+  const pic = (x) => (x ? (x.photo ? photoSvg(x.photo, { w: 320, h: 180, trails: false }) : frameSvg(x)) : "");
+  let card;
+  if (!m) {
+    card = `<div class="prac-card idle"><b class="prac-name">Do one of your moves</b><span class="soft">Swing, kick, duck, hold a pose: it shows which one it saw. Nothing is sent to WoW while you're here.</span></div>`;
+  } else if (m.outcome === "hit") {
+    card = `<div class="prac-card hit"><div class="prac-pic">${pic(g)}</div><div class="stack" style="gap:8px;min-width:0">
+      <span class="eyebrow" style="color:var(--ok)">You did</span><b class="prac-name">${esc(m.name)}</b>
+      <div class="row" style="gap:10px">${m.key ? `<span class="key">${esc(m.key)}</span>` : ""}${g?.casts ? `<span class="soft">${esc(g.casts)}</span>` : ""}</div>
+      ${m.match != null ? `<div class="row" style="gap:8px"><div class="meter webcam" style="max-width:220px"><i style="width:${pct(m.match)}"></i></div><span style="font-size:13px">match ${pct(m.match)}</span></div>` : ""}</div></div>`;
+  } else if (m.outcome === "miss") {
+    const cg = m.closest ? S.gestures.find((x) => x.id === m.closest.gid) : null;
+    card = `<div class="prac-card miss"><div class="prac-pic">${cg ? pic(cg) : ""}</div><div class="stack" style="gap:8px;min-width:0">
+      <span class="eyebrow">Didn't recognize that</span><b class="prac-name">${esc(MISS_WHY(m.reason))}</b>
+      ${m.closest ? `<span class="soft">Closest: <b>${esc(m.closest.name)}</b> (match ${pct(m.closest.match)}).</span>` : ""}</div></div>`;
+  } else {
+    card = `<div class="prac-card near"><div class="prac-pic">${pic(g)}</div><div class="stack" style="gap:8px;min-width:0">
+      <span class="eyebrow" style="color:var(--warn)">${m.outcome === "held" ? "Saw it, but wasn't sure" : "Almost"}</span><b class="prac-name">${esc(m.name || "?")}</b>
+      <span class="soft">${m.outcome === "held" ? "It needs to see your weapon hand to tell this from a move like it." : `Match ${pct(m.match)}, not quite enough. If that was it, do it more like your takes, or on its page slide toward Loose or Add takes.`}</span></div></div>`;
+  }
+  const hist = practice.history.slice(0, 12).map((h) => `<li><span class="t">${fmtTime(h.t)}</span><span class="${h.outcome === "hit" ? "sent" : h.outcome === "miss" ? "" : "near"}">${h.outcome === "hit" ? "✓" : h.outcome === "miss" ? "✗" : "~"} ${esc(h.outcome === "miss" ? "nothing" : h.name || "?")}</span><span>${h.outcome === "miss" ? (h.closest ? `closest ${esc(h.closest.name)} ${pct(h.closest.match)}` : "") : pct(h.match)}</span></li>`).join("");
+  const total = practice.history.length;
+  const hits = practice.history.filter((h) => h.outcome === "hit").length;
+  const recentHit = m && m.outcome === "hit" && Date.now() / 1000 - m.t < 1.5 ? m.gid : null;
+  const moves = ready.map((x) => { const t = practice.tally[x.id] || { hit: 0, near: 0 };
+    return `<div class="prac-move ${recentHit === x.id ? "lit" : ""} ${t.hit ? "done" : ""}"><div class="prac-move-pic">${pic(x)}</div><div class="row between" style="gap:6px"><b>${esc(x.name)}</b>${keyCap(x)}</div><span class="muted" style="font-size:12px">${t.hit ? `✓ ${t.hit}×` : "not yet"}${t.near ? ` · ${t.near} almost` : ""}</span></div>`; }).join("");
+  return `
+  <div class="toolbar"><div class="chips grow" id="chips">${chipsHtml()}</div>
+    <button class="ghost small" data-act="practice-reset" ${total ? "" : "disabled"}>Start over</button></div>
+  <div class="head"><div class="lead"><h1>Practice</h1><p class="soft">Do any of your moves: it shows which one it saw. Keys are off while you're here.</p></div>
+    <div class="prac-score"><b>${hits}</b><span class="muted">of ${total} recognized</span></div></div>
+  <div class="prac-layout">
+    <div class="stack" style="gap:14px;min-width:0">${card}<div id="cam-slot" class="cam-slot"></div></div>
+    <aside class="panel stack" style="gap:10px"><h2>Just now</h2>${hist ? `<ol class="log">${hist}</ol>` : `<p class="muted" style="font-size:13px">Your attempts show up here.</p>`}</aside>
+  </div>
+  <section class="stack" style="gap:10px"><span class="eyebrow">Your moves · ${Object.values(practice.tally).filter((t) => t.hit).length} of ${ready.length} done</span><div class="prac-moves">${moves}</div></section>`;
+}
+
 // ------------------------------------------------------------------ HUD / overlay
 
 function hudPage() {
@@ -750,6 +858,7 @@ function hudPage() {
     <div class="row">${ICONS.logo}<span style="flex:1;display:flex;flex-direction:column;line-height:1.15"><b>${esc(S.profile.name)}</b><small class="muted">${S.gestures.length} gestures</small></span>
       <button class="arm-pill ${S.armed ? "on" : ""}" data-act="arm">${S.armed ? "ARMED" : "DISARMED"}</button>
       ${overlay ? `<button class="small ghost" data-act="compact" aria-label="${ui.compact ? "Expand" : "Collapse"}">${ui.compact ? "▾" : "▴"}</button><button class="small ghost" data-act="overlay-hide" aria-label="Hide the HUD (show it again from the ⚔ menu)" title="Hide (⚔ menu → HUD over the game brings it back)">✕</button>` : ""}</div>
+    ${S.practice ? `<div class="note warn" style="font-size:12px">Practising in the app window: keys are off.</div>` : ""}
     ${overlay ? "" : `<a href="#/library" class="small" style="align-self:flex-start">← Back to the app</a>`}
     <div class="hud-body stack" style="gap:14px">
     ${S.drill ? drillHtml(S.drill, true) : c ? captureHtml(c, true) : `
@@ -1061,6 +1170,7 @@ const actions = {
   compact: () => { ui.compact = !ui.compact; send({ op: "overlay_size", height: ui.compact ? 76 : null }); render(true); },
   wrong: () => send({ op: "report_wrong", ignore: true }),
   "neutral-cancel": () => send({ op: "neutral_cancel" }),
+  "practice-reset": () => { practice.history = []; practice.tally = {}; practice.misses = 0; render(true); },
   "open-settings": (el) => send({ op: "open_settings", pane: el.dataset.pane }),
   "open-demo": () => { send({ op: "open_demo" }); flash("Opening the demo in a new window…"); },
   "overlay-hide": () => send({ op: "overlay_hide" }),

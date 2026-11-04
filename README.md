@@ -85,6 +85,14 @@ with the skeleton found on each. Tiles show your most typical take (hover to pla
 gesture's page shows every take. They stay on your Mac, in the data folder
 (`~/Library/Application Support/Mocap/photos`), and go when you remove the take or gesture.
 
+## Practising
+
+**Practice** in the sidebar: do any of your moves and it shows, big, which one it saw, with its
+key and how close a match it was. A near miss says how close; something it doesn't know says so,
+with the closest move and why (too slow, too small...). The move's tile lights up and the
+session keeps score. Keys are off while you're on it, and come back on when you leave the page
+or click into WoW.
+
 ## Playing
 
 - **Arm** with a pose set to "Toggles armed" (e.g. weapons crossed overhead), the ARMED button,

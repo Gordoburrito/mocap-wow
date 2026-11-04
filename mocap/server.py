@@ -32,6 +32,7 @@ class Server:
         self.loop = None
         self.clients = set()
         self.previews = {}          # client -> (wants video, width): each window asks for itself
+        self.practicing = set()     # clients showing the Practice screen (keys are off meanwhile)
         self._ready = threading.Event()
         self._error = None
 
@@ -141,6 +142,12 @@ class Server:
                     self.previews[q] = (bool(op.get("on")), max(320, min(1280, width)))
                     self._apply_previews()
                     continue
+                if op.get("op") == "practice":
+                    # Practice lasts while some window shows it: leaving the page or closing
+                    # the window turns keys back on.
+                    (self.practicing.add if op.get("on") else self.practicing.discard)(q)
+                    await self.loop.run_in_executor(None, self.engine.set_practice, bool(self.practicing))
+                    continue
                 reply = await self.loop.run_in_executor(None, self.engine.handle, op)
                 if reply:
                     q.put_nowait(reply)
@@ -148,6 +155,9 @@ class Server:
             self.clients.discard(q)
             self.previews.pop(q, None)
             self._apply_previews()
+            if q in self.practicing:
+                self.practicing.discard(q)
+                await self.loop.run_in_executor(None, self.engine.set_practice, bool(self.practicing))
             sender.cancel()
         return ws
 
