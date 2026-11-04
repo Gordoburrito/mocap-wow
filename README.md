@@ -78,6 +78,10 @@ whether key output is allowed.
    the old "just do it 5 times" style.
 3. Each kept take lands in the **take strip** under the video: a photo of you at the peak of
    the take with your skeleton on top.
+   **Tip:** each take, do the move once, the same way, then hold still until the next countdown.
+   If you also do something else in the window it keeps the biggest movement; starting a beat
+   before GO is fine. An odd take out is dropped, and if your takes still don't agree it says so
+   before you save (a move whose takes vary a lot fires on lots of other movements).
 4. **Press the key** you bound in WoW, name it, and **Save and go live**.
 
 Every gesture keeps photos of you doing it: a few webcam frames per take (start, peak, end)
@@ -90,7 +94,8 @@ gesture's page shows every take. They stay on your Mac, in the data folder
 **Practice** in the sidebar: do any of your moves and it shows, big, which one it saw, with its
 key and how close a match it was. A near miss says how close; something it doesn't know says so,
 with the closest move and why (too slow, too small...). The move's tile lights up and the
-session keeps score. Keys are off while you're on it, and come back on when you leave the page
+session keeps score. If it shows a move you didn't do, press **That wasn't it**: it remembers
+that movement and stops taking it for that move. Keys are off while you're on it, and come back on when you leave the page
 or click into WoW.
 
 ## Playing

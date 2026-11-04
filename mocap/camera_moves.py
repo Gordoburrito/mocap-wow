@@ -47,6 +47,9 @@ SIZE_FLOOR = 0.45          # ...and travel this fraction of your shortest take's
 SIZE_WEIGHT = 0.15         # |log(size ratio)| added to the shape distance
 MIRROR_WINDOW = 1.0
 SPEED_SPAN = 0.1           # seconds over which joint speed is measured
+ODD_RATIO, ODD_MIN = 1.6, 0.3   # a take this much further from the others than they are from each other is odd
+LOOSE_SPREAD = 0.5         # takes that vary more than this don't pin a move down (real people: 0.25 typical,
+                           # 95% under 0.54): it would fire on lots of other movements
 
 
 def body_points(landmarks, aspect, scale):
@@ -260,6 +263,37 @@ def part_travel(takes):
     travel = np.linalg.norm(np.diff(seqs, axis=1), axis=3).sum(axis=1).mean(axis=0)   # per point
     parts = {"left_arm": (0, 2), "right_arm": (1, 3), "left_leg": (4, 6), "right_leg": (5, 7), "body": (8,)}
     return {p: float(max(travel[i] for i in idx)) for p, idx in parts.items()}
+
+
+def keep_takes(takes, min_keep=3):
+    """Indices of the takes to keep, dropping the odd ones out: a take much further from all the
+    others than they are from each other (half a move, a different move, two moves at once)."""
+    n = len(takes)
+    if n <= min_keep:
+        return list(range(n))
+    nn = _nearest(takes)
+    med = float(np.median(nn))
+    odd = [int(i) for i in np.argsort(-nn) if nn[i] > max(ODD_RATIO * med, ODD_MIN)]
+    drop = set(odd[:n - min_keep])
+    return [i for i in range(n) if i not in drop]
+
+
+def takes_spread(takes):
+    """How much your takes of one move vary (the same measure the threshold comes from)."""
+    if len(takes) < 2:
+        return 0.0
+    return float(np.percentile(_nearest(takes), 90))
+
+
+def _nearest(takes):
+    """Each take's distance to its nearest other take, judged on the parts that moved."""
+    scope = auto_scope(takes)
+    clf = MoveClassifier(points=SCOPES[scope], grounded=scope in GROUNDED)
+    seqs = np.stack([clf._prep(t) for t in takes])
+    sizes = np.array([size(t, clf.cols) for t in takes])
+    D = np.stack([distances(s, sizes[i], seqs, sizes) for i, s in enumerate(seqs)])
+    np.fill_diagonal(D, np.inf)
+    return D.min(axis=1)
 
 
 def auto_scope(takes):

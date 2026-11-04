@@ -119,7 +119,9 @@ class Server:
         return web.json_response({"ok": True, "seconds": seconds})
 
     async def _ws(self, request):
-        ws = web.WebSocketResponse(heartbeat=20, max_msg_size=4 * 1024 * 1024)
+        # No compression: it's a local connection, the video is JPEG already, and compressed
+        # frames finish sending in the background (noisy when a window closes mid-frame).
+        ws = web.WebSocketResponse(heartbeat=20, max_msg_size=4 * 1024 * 1024, compress=False)
         await ws.prepare(request)
         q = asyncio.Queue()
         self.clients.add(q)

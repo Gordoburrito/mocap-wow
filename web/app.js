@@ -437,14 +437,15 @@ function libraryPage() {
 function tileHtml(g) {
   const isNew = g.id === S.last_captured;
   const st = g.stats || { fired: 0, near: 0 };
-  const warn = g.calibration && g.calibration.margin !== null && g.calibration.margin < 1.2;
+  const loose = g.calibration?.loose;
+  const warn = !loose && g.calibration && g.calibration.margin !== null && g.calibration.margin < 1.2;
   const statLine = isNew ? `<span class="stat" style="color:#ffb3a1">Just captured</span>`
     : !g.ready ? `<span class="stat" style="color:var(--warn)">${g.count ? "Needs a key" : "Not recorded yet"}</span>`
     : `<span class="stat">Fired ${st.fired}× this session${st.near ? ` · ${st.near} near-miss` : ""}</span>`;
   const src = g.kind === "motion" ? g.source : g.kind === "pose" || g.kind === "move" ? "pose" : "move";
   return `<a href="#/gesture/${g.id}" class="tile ${isNew ? "new" : ""} ${g.enabled ? "" : "off"}" data-gid="${g.id}">
     <div class="frame">${frameSvg(g)}<span class="badge"><i class="dot ${src}"></i>${esc(g.kind === "motion" ? cap(g.source) + (g.scope === "weapon" ? " · gyro only" : "") : g.kind === "move" ? `Body move · ${(SCOPE_LABEL[g.scope_effective] || "").toLowerCase()}` : g.kind === "pose" ? (g.action === "arm_toggle" ? "System pose" : "Pose") + (g.scope && g.scope !== "whole" ? ` · ${SCOPE_LABEL[g.scope].toLowerCase()}` : "") : "Movement")}</span>
-      ${isNew ? `<span class="badge right new">NEW</span>` : warn ? `<span class="badge right warn">close to ${esc(g.calibration.nearest)}</span>` : ""}</div>
+      ${isNew ? `<span class="badge right new">NEW</span>` : loose ? `<span class="badge right warn">takes don't agree</span>` : warn ? `<span class="badge right warn">close to ${esc(g.calibration.nearest)}</span>` : ""}</div>
     <div class="tile-body"><div class="tile-row"><b>${esc(g.name)}</b>${keyCap(g)}</div>
       <span class="casts">${esc(g.casts || "")}</span>${statLine}</div>
     ${tooltipHtml(g)}</a>`;
@@ -506,7 +507,7 @@ function takesPanel(g, color) {
       ${g.photo ? `<div class="frame big-photo">${photoSvg(g.photo, { w: 520, h: 292, all: true })}</div>${g.photo.credit ? SAMPLE_NOTE : `<span class="muted" style="font-size:12px">Your most typical take, with your skeleton on top and dotted trails for what it's judged on (${esc(SCOPE_LABEL[g.scope_effective].toLowerCase())}). Hover to play it.</span>`}${creditLine(g.photo)}`
         : g.real ? `<div class="frame" style="border-radius:10px;max-width:520px">${realMoveSvg(g.real)}</div><span class="muted" style="font-size:12px">Your recording: faint where you started, solid at the furthest point, dotted trails for what it's judged on (${esc(SCOPE_LABEL[g.scope_effective].toLowerCase())}).</span>`
         : g.move ? `<div class="frame" style="border-radius:10px;max-width:520px">${moveSvg(g.move)}</div><span class="muted" style="font-size:12px">Your average take: faint figure where it starts, solid where it ends, dotted trails for the joints that travel.</span>` : `<p class="muted">Not recorded yet.</p>`}
-      <div class="takes">${takes.map((t, i) => `<div class="take">${g.take_photos?.[i] ? `<div class="take-photo">${photoSvg(peakRec(g.take_photos[i]), { w: 120, h: 120, trails: false, label: `Take ${i + 1}` })}</div>` : g.take_real?.[i] ? `<div style="height:96px">${realMoveSvg(g.take_real[i], "#4fd1a5", 96, 96)}</div>` : spark(t, "#4fd1a5", 100, 36)}<div class="row between" style="font-size:12px"><span>Take ${i + 1}</span><button class="small ghost" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button></div></div>`).join("")}</div></section>`;
+      <div class="takes">${takes.map((t, i) => `<div class="take">${g.take_photos?.[i] ? `<div class="take-photo">${photoSvg(peakRec(g.take_photos[i]), { w: 120, h: 120, trails: false, label: `Take ${i + 1}` })}</div>` : g.take_real?.[i] ? `<div style="height:96px">${realMoveSvg(g.take_real[i], "#4fd1a5", 96, 96)}</div>` : spark(t, "#4fd1a5", 100, 36)}<div class="row between" style="font-size:12px"><span style="${g.take_odd?.[i] ? "color:var(--warn)" : ""}">${g.take_odd?.[i] ? "Odd one out" : `Take ${i + 1}`}</span><button class="small ${g.take_odd?.[i] ? "" : "ghost"}" data-act="remove-take" data-id="${g.id}" data-i="${i}">Remove</button></div></div>`).join("")}</div></section>`;
   }
   const takes = g.takes || [];
   const n = takes[0]?.length || 24;
@@ -555,7 +556,8 @@ function histogram(hist) {
 function firingPanel(g, st) {
   const cal = g.calibration;
   const modeSeg = g.kind === "pose" && g.action !== "arm_toggle" ? `<div class="seg" role="radiogroup" aria-label="When it fires"><button class="${g.mode !== "hold" ? "on" : ""}" data-act="gmode" data-id="${g.id}" data-v="tap">Once per hold</button><button class="${g.mode === "hold" ? "on" : ""}" data-act="gmode" data-id="${g.id}" data-v="hold">Hold key while held</button></div>` : "";
-  const calNote = cal ? (cal.margin !== null && cal.margin < 1.2
+  const calNote = cal && cal.loose ? `<div class="note warn">Your takes don't agree with each other (they vary ${Math.round(cal.spread * 100)}%; real people's takes of one move typically vary about 25%). So it accepts almost any ${esc((SCOPE_LABEL[g.scope_effective] || "").toLowerCase())} movement and fires when you didn't mean it. <b>Re-record all</b>: start still, do the move once the same way each take, then settle.${g.take_odd?.some(Boolean) ? " Or remove the odd ones out below." : ""}</div>`
+    : cal ? (cal.margin !== null && cal.margin < 1.2
       ? `<div class="note warn">This move is close to <b>${esc(cal.nearest)}</b>. Make them more different, or record moves to ignore. (margin ${cal.margin})</div>`
       : `<div class="note ok">Calibrated from your takes${cal.with_camera ? " and hand paths" : ""}${cal.nearest ? ` · nearest other move: ${esc(cal.nearest)} (margin ${cal.margin})` : ""}.</div>`) : "";
   const sens = g.kind === "motion" || g.kind === "pose" ? `<label class="inline" style="font-size:12px;color:#a7aec0">Strict<input type="range" min="0.5" max="2" step="0.05" value="${g.sensitivity ?? 1}" data-change="gfield-num" data-k="sensitivity" style="flex:1" aria-label="Sensitivity">Loose</label>` : "";
@@ -815,7 +817,10 @@ function practicePage() {
     card = `<div class="prac-card hit"><div class="prac-pic">${pic(g)}</div><div class="stack" style="gap:8px;min-width:0">
       <span class="eyebrow" style="color:var(--ok)">You did</span><b class="prac-name">${esc(m.name)}</b>
       <div class="row" style="gap:10px">${m.key ? `<span class="key">${esc(m.key)}</span>` : ""}${g?.casts ? `<span class="soft">${esc(g.casts)}</span>` : ""}</div>
-      ${m.match != null ? `<div class="row" style="gap:8px"><div class="meter webcam" style="max-width:220px"><i style="width:${pct(m.match)}"></i></div><span style="font-size:13px">match ${pct(m.match)}</span></div>` : ""}</div></div>`;
+      ${m.match != null ? `<div class="row" style="gap:8px"><div class="meter webcam" style="max-width:220px"><i style="width:${pct(m.match)}"></i></div><span style="font-size:13px">match ${pct(m.match)}</span></div>` : ""}
+      ${g?.calibration?.loose ? `<span class="note warn" style="font-size:12px">This move's takes don't agree, so it fires on lots of movements. <a href="#/gesture/${g.id}">Re-record it</a>.</span>` : ""}
+      ${m.wrong ? `<span class="muted" style="font-size:12px">Marked: it won't take that movement for ${esc(m.name)} again.</span>`
+        : `<button class="small ghost" data-act="practice-wrong" style="align-self:flex-start" title="It'll remember that movement and stop taking it for this move">That wasn't it</button>`}</div></div>`;
   } else if (m.outcome === "miss") {
     const cg = m.closest ? S.gestures.find((x) => x.id === m.closest.gid) : null;
     card = `<div class="prac-card miss"><div class="prac-pic">${cg ? pic(cg) : ""}</div><div class="stack" style="gap:8px;min-width:0">
@@ -826,9 +831,9 @@ function practicePage() {
       <span class="eyebrow" style="color:var(--warn)">${m.outcome === "held" ? "Saw it, but wasn't sure" : "Almost"}</span><b class="prac-name">${esc(m.name || "?")}</b>
       <span class="soft">${m.outcome === "held" ? "It needs to see your weapon hand to tell this from a move like it." : `Match ${pct(m.match)}, not quite enough. If that was it, do it more like your takes, or on its page slide toward Loose or Add takes.`}</span></div></div>`;
   }
-  const hist = practice.history.slice(0, 12).map((h) => `<li><span class="t">${fmtTime(h.t)}</span><span class="${h.outcome === "hit" ? "sent" : h.outcome === "miss" ? "" : "near"}">${h.outcome === "hit" ? "✓" : h.outcome === "miss" ? "✗" : "~"} ${esc(h.outcome === "miss" ? "nothing" : h.name || "?")}</span><span>${h.outcome === "miss" ? (h.closest ? `closest ${esc(h.closest.name)} ${pct(h.closest.match)}` : "") : pct(h.match)}</span></li>`).join("");
+  const hist = practice.history.slice(0, 12).map((h) => `<li><span class="t">${fmtTime(h.t)}</span><span class="${h.wrong ? "" : h.outcome === "hit" ? "sent" : h.outcome === "miss" ? "" : "near"}">${h.wrong ? "✗" : h.outcome === "hit" ? "✓" : h.outcome === "miss" ? "✗" : "~"} ${esc(h.outcome === "miss" ? "nothing" : h.name || "?")}${h.wrong ? " (wasn't it)" : ""}</span><span>${h.outcome === "miss" ? (h.closest ? `closest ${esc(h.closest.name)} ${pct(h.closest.match)}` : "") : pct(h.match)}</span></li>`).join("");
   const total = practice.history.length;
-  const hits = practice.history.filter((h) => h.outcome === "hit").length;
+  const hits = practice.history.filter((h) => h.outcome === "hit" && !h.wrong).length;
   const recentHit = m && m.outcome === "hit" && Date.now() / 1000 - m.t < 1.5 ? m.gid : null;
   const moves = ready.map((x) => { const t = practice.tally[x.id] || { hit: 0, near: 0 };
     return `<div class="prac-move ${recentHit === x.id ? "lit" : ""} ${t.hit ? "done" : ""}"><div class="prac-move-pic">${pic(x)}</div><div class="row between" style="gap:6px"><b>${esc(x.name)}</b>${keyCap(x)}</div><span class="muted" style="font-size:12px">${t.hit ? `✓ ${t.hit}×` : "not yet"}${t.near ? ` · ${t.near} almost` : ""}</span></div>`; }).join("");
@@ -979,7 +984,8 @@ function captureHtml(c, inHud) {
   // bind
   const listening = !c.key;
   return `${title}${steps}
-    <div class="note info row"><i class="dot ${c.kind === "motion" ? c.source : "pose"}"></i><span style="flex:1"><b>${c.count} ${c.kind === "pose" ? "frames" : "takes"}</b> · ${esc(c.kind === "motion" ? cap(c.source) + " motion" : c.kind === "move" ? "Body move" : "Pose")}${c.kind === "move" && c.auto_scope ? ` · judged on: <b>${esc(SCOPE_LABEL[c.auto_scope].toLowerCase())}</b> (what moved; change it on its page)` : ""}</span></div>
+    ${c.loose ? `<div class="note warn">These takes don't agree with each other, so this move would fire on lots of other movements. <b>Redo</b> and do it the same way each take: start still, do it once, settle.</div>` : ""}
+    <div class="note info row"><i class="dot ${c.kind === "motion" ? c.source : "pose"}"></i><span style="flex:1"><b>${c.count} ${c.kind === "pose" ? "frames" : "takes"}</b>${c.pruned ? ` (dropped ${c.pruned} odd one${c.pruned > 1 ? "s" : ""})` : ""} · ${esc(c.kind === "motion" ? cap(c.source) + " motion" : c.kind === "move" ? "Body move" : "Pose")}${c.kind === "move" && c.auto_scope ? ` · judged on: <b>${esc(SCOPE_LABEL[c.auto_scope].toLowerCase())}</b> (what moved; change it on its page)` : ""}</span></div>
     ${(c.take_photos || []).some(Boolean) ? `<div class="cap-strip">${takeStrip(c)}</div>` : ""}
     <div class="keybox"><div class="row between"><b>Key</b>${listening ? `<span style="font-size:12px;color:#ff9a76">● Listening</span>` : ""}</div>
       <span class="soft" style="font-size:13px">Press the key this move should send: the one you bound in WoW.${inHud ? " (Works while WoW has focus.)" : ""}</span>
@@ -1170,6 +1176,7 @@ const actions = {
   compact: () => { ui.compact = !ui.compact; send({ op: "overlay_size", height: ui.compact ? 76 : null }); render(true); },
   wrong: () => send({ op: "report_wrong", ignore: true }),
   "neutral-cancel": () => send({ op: "neutral_cancel" }),
+  "practice-wrong": () => { const m = practice.history[0]; if (!m || m.outcome !== "hit" || m.wrong) return; send({ op: "report_wrong", ignore: true }); m.wrong = true; tallyPractice(m, -1); render(true); },
   "practice-reset": () => { practice.history = []; practice.tally = {}; practice.misses = 0; render(true); },
   "open-settings": (el) => send({ op: "open_settings", pane: el.dataset.pane }),
   "open-demo": () => { send({ op: "open_demo" }); flash("Opening the demo in a new window…"); },

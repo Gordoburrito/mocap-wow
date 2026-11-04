@@ -179,6 +179,7 @@ flowchart LR
     A([Sidebar → Practice<br/>keys off]) --> B[Do any of your moves]
     B --> C{What did it see?}
     C -- one of your moves --> H[✓ name, key, match %<br/>its tile lights up]
+    H -. not what you did .-> W[That wasn't it:<br/>it stops taking that movement]
     C -- close to one --> N[~ Almost: name, match %<br/>do it more like your takes, or loosen it]
     C -- nothing it knows --> M[✗ Didn't recognize that<br/>why, and the closest move]
     H & N & M --> B

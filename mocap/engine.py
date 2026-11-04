@@ -46,6 +46,8 @@ TRAIL_JOINTS = {"left_arm": [15], "right_arm": [16], "arms": [15, 16], "left_leg
                 "right_leg": [28], "legs": [27, 28], "body": [0]}
 CAPTURE_READY_S = 1.2           # ignore everything right after a capture starts (the clash itself)
 CAPTURE_TIMEOUT_S = 40.0
+EARLY_START_S = 1.0             # a body move started this long before GO still counts as the take
+PIECE_GAP_S = 0.35              # pieces of a body move with pauses this short are one move
 POSE_CAPTURE_S = 2.0
 PRACTICE_RETURN_S = 2.0      # Practice: no "didn't recognize" for this long after a hit (the way back)
 STILL_WINDOW_S = 0.5         # the camera must see the weapon hand still this long to re-zero its gyro
@@ -297,6 +299,8 @@ class Engine:
             out["move"] = {"points": np.round(mean, 3).tolist(),
                            "active": [int(i) for i in np.argsort(-travel)[:3] if travel[i] > 0.15]}
             out["takes"] = [np.round(camera_moves._speeds(t), 2).tolist() for t in g["templates"]]
+            keep = set(camera_moves.keep_takes(g["templates"]))
+            out["take_odd"] = [i not in keep for i in range(len(g["templates"]))]
             skels = g.get("skeletons") or []
             if any(skels):
                 # Draw what you actually recorded: the take closest to all the others.
@@ -360,7 +364,8 @@ class Engine:
             other = self.gesture(nearest) if nearest and nearest.startswith("g") else None
             out["calibration"] = {"threshold": round(mcal["threshold"], 3), "spread": round(mcal["spread"], 3),
                                   "margin": round(mcal["margin"], 2) if mcal.get("margin") else None,
-                                  "nearest": other["name"] if other else nearest}
+                                  "nearest": other["name"] if other else nearest,
+                                  "loose": mcal["spread"] > camera_moves.LOOSE_SPREAD}
         if pcal and pcal.get("nearest"):
             nearest = pcal["nearest_gid"]
             other = self.gesture(nearest) if nearest and nearest.startswith("g") else None
@@ -995,6 +1000,8 @@ class Engine:
             "key": c["key"], "key_label": binding_label(c["key"]) if c["key"] else None,
             "conflict": self._key_conflict(c["key"]),
             "auto_scope": c.get("auto_scope"),
+            "pruned": c.get("pruned", 0),
+            "loose": c.get("spread", 0.0) > camera_moves.LOOSE_SPREAD,
             "style": c.get("style"), "take_phase": c.get("take_phase"), "take_message": c.get("take_message", ""),
             "take_remaining": round(max(0.0, c.get("take_until", now) - now), 2),
             "take_length": c.get("take_length", 0.0), "misses": c.get("misses", 0),
@@ -1139,7 +1146,9 @@ class Engine:
         stop = stop if stop is not None else np.inf
         if pose:
             return start + 0.4 <= t <= stop          # a held pose: once you've got into it
-        return start - 0.25 <= t <= stop and (end is None or end >= start)
+        if end is not None:                         # a body move: started by then (even just before GO)
+            return start - EARLY_START_S <= t <= stop and end >= start + 0.1
+        return start - 0.25 <= t <= stop
 
     def _take_tick(self, now):
         c = self.capture
@@ -1186,7 +1195,7 @@ class Engine:
                 self._fill_paths()          # the camera has caught up by now: paths and photos
                 kept = True
         elif c["kind"] in (None, "move") and w["move"]:
-            take = np.concatenate(sorted(w["move"], key=lambda s: s[0, 0]))
+            take = _main_move(w["move"])
             c["kind"], c["source"] = "move", "webcam"
             c["takes"].append(np.round(take, 4).tolist())
             c.setdefault("skeletons", []).append(self._keyframes(take[0, 0], take[-1, 0]))
@@ -1251,7 +1260,14 @@ class Engine:
         c = self.capture
         c["take_phase"] = None
         if c["kind"] == "move" and c["takes"]:
+            keep = camera_moves.keep_takes(c["takes"])
+            if len(keep) < len(c["takes"]):
+                c["pruned"] = len(c["takes"]) - len(keep)
+                for k in ("takes", "skeletons", "photos"):
+                    if c.get(k):
+                        c[k] = [c[k][i] for i in keep if i < len(c[k])]
             c["auto_scope"] = camera_moves.auto_scope(c["takes"])
+            c["spread"] = camera_moves.takes_spread(c["takes"])
         if c["kind"] == "motion":
             self._fill_paths(final=True)
             paths = c.get("paths") or [None] * len(c["takes"])
@@ -1841,6 +1857,19 @@ SETTINGS_PANES = {
 def _open_url(url):
     if sys.platform == "darwin":
         subprocess.Popen(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _main_move(pieces):
+    """One take from what moved in a recording window: pieces of one move (brief pauses inside
+    it) joined, and if you did more than one thing, the biggest (not the way back or a fidget)."""
+    pieces = sorted(pieces, key=lambda s: s[0, 0])
+    groups = [[pieces[0]]]
+    for seg in pieces[1:]:
+        if seg[0, 0] - groups[-1][-1][-1, 0] <= PIECE_GAP_S:
+            groups[-1].append(seg)
+        else:
+            groups.append([seg])
+    return max((np.concatenate(g) for g in groups), key=lambda s: camera_moves.size(s))
 
 
 def _peak_host(dev, segment):
