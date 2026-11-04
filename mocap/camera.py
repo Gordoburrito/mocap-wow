@@ -8,9 +8,8 @@ import numpy as np
 
 MODEL_URL = ("https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
              "pose_landmarker_full/float16/latest/pose_landmarker_full.task")
-PREVIEW_WIDTH = 480
-PREVIEW_FPS = 15
 PHOTO_WIDTH = 640
+PHOTO_FPS = 15
 
 
 class Camera(threading.Thread):
@@ -60,7 +59,7 @@ class Camera(threading.Thread):
         landmarker = vision.PoseLandmarker.create_from_options(options)
         t0 = time.monotonic()
         last_ts = -1
-        frames, fps_t0, last_preview, failures = 0, t0, 0.0, 0
+        frames, fps_t0, last_preview, last_photo, failures = 0, t0, 0.0, 0.0, 0
         try:
             while not self.stop.is_set():
                 ok, frame = cap.read()
@@ -88,19 +87,29 @@ class Camera(threading.Thread):
                     self.engine.set_camera(ok=True, fps=round(frames / (now - fps_t0), 1),
                                            message="")
                     frames, fps_t0 = 0, now
-                preview, photos = self.engine.preview_wanted, self.engine.photos_wanted
-                if (preview or photos) and now - last_preview >= 1 / PREVIEW_FPS:
+                eng = self.engine
+                photos = eng.photos_wanted
+                if eng.preview_wanted and now - last_preview >= 1 / eng.preview_fps:
                     last_preview = now
-                    # While capturing, the frames are also the photos of your takes: a bit bigger.
-                    width = PHOTO_WIDTH if photos else PREVIEW_WIDTH
-                    small = cv2.resize(frame, (width, int(width * h / w)), interpolation=cv2.INTER_AREA)
-                    ok, jpeg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 78 if photos else 70])
-                    if ok:
-                        data = jpeg.tobytes()
-                        if preview:
-                            self.engine.emit_binary(data)
-                        if photos:
-                            self.engine.on_photo(now, data)
+                    data = _jpeg(cv2, frame, eng.preview_width, 72)
+                    if data:
+                        eng.emit_binary(data)
+                        if photos and eng.preview_width == PHOTO_WIDTH:
+                            eng.on_photo(now, data)
+                            last_photo = now
+                # While capturing, frames are also kept as the photos of your takes.
+                if photos and now - last_photo >= 1 / PHOTO_FPS:
+                    last_photo = now
+                    data = _jpeg(cv2, frame, PHOTO_WIDTH, 78)
+                    if data:
+                        eng.on_photo(now, data)
         finally:
             landmarker.close()
             cap.release()
+
+
+def _jpeg(cv2, frame, width, quality):
+    h, w = frame.shape[:2]
+    small = cv2.resize(frame, (width, int(width * h / w)), interpolation=cv2.INTER_AREA)
+    ok, jpeg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return jpeg.tobytes() if ok else None

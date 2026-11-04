@@ -18,7 +18,7 @@ let ws = null;
 let S = null;                       // latest engine snapshot
 let route = parseRoute();
 const live = { pose: null, energy: {}, start: {} };
-const ui = { filter: "all", search: "", listening: null, toastUntil: 0, compact: false, calibDone: null, neutral: null, deleteArmed: null };
+const ui = { filter: "all", search: "", listening: null, toastUntil: 0, compact: false, calibDone: null, neutral: null, deleteArmed: null, camSkeleton: true, camVideo: true };
 
 function parseRoute() {
   const parts = (location.hash || "#/library").replace(/^#\/?/, "").split("/");
@@ -29,7 +29,7 @@ window.addEventListener("hashchange", () => { route = parseRoute(); render(true)
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.binaryType = "blob";
-  ws.onopen = () => send({ op: "preview", on: !document.hidden && route.page !== "overlay" });
+  ws.onopen = () => { lastPreview = ""; syncPreview(); };
   ws.onclose = () => { S && (S.disconnected = true); render(true); setTimeout(connect, 1000); };
   ws.onmessage = (e) => {
     if (e.data instanceof Blob) return showPreview(e.data);
@@ -38,7 +38,17 @@ function connect() {
   };
 }
 function send(op) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(op)); }
-document.addEventListener("visibilitychange", () => send({ op: "preview", on: !document.hidden && route.page !== "overlay" }));
+document.addEventListener("visibilitychange", () => syncPreview());
+
+// Ask for video only while this window shows it, and big and smooth while a live view (the
+// Camera page, a capture) fills the screen. Each window asks for itself.
+let lastPreview = "";
+function syncPreview() {
+  const big = route.page === "camera" || (S?.capture && S.capture.phase === "perform" && S.capture.style === "countdown");
+  const want = { op: "preview", on: !document.hidden && route.page !== "overlay", width: big ? 960 : 480 };
+  const key = JSON.stringify(want);
+  if (key !== lastPreview && ws && ws.readyState === WebSocket.OPEN) { lastPreview = key; send(want); }
+}
 
 const handlers = {
   state: (m) => { S = m; render(); },
@@ -80,11 +90,19 @@ function render(force = false) {
   const page = route.page;
   if (page === "overlay" || page === "hud") { setHTML($("#root"), hudPage()); return; }
   const body = page === "gesture" ? gesturePage(route.id) : page === "engine" ? enginePage()
-    : page === "metrics" ? metricsPage() : libraryPage();
+    : page === "metrics" ? metricsPage() : page === "camera" ? cameraPage() : libraryPage();
   if (setHTML($("#root"), `<div class="app">${sidebar()}<main class="main" id="main">${banners()}${body}</main></div>`)) afterRender();
+  syncPreview();
 }
 
 function afterRender() {
+  const slot = $("#cam-slot");
+  if (slot) {
+    const stage = camStage();
+    if (stage.parentElement !== slot) slot.appendChild(stage);
+    stage.classList.toggle("no-video", !ui.camVideo);
+    setHTML($("#cam-over"), camOverlay());
+  }
   drawSkeleton();
   for (const [name, e] of Object.entries(live.energy)) setMeter(name, e, live.start[name]);
 }
@@ -93,13 +111,14 @@ function banners() {
   let out = "";
   if (S.demo) out += `<div class="banner info">Demo: sample data on simulated weapons and webcam, in its own folder. Your real profile and play log aren't touched, and no keys are sent. A demo player makes a move every few seconds.</div>`;
   if (S.disconnected) out += `<div class="banner bad">Disconnected from the engine — is it still running?</div>`;
-  if (!S.keys_ok) out += `<div class="banner warn">Key output is blocked. Open <b>System Settings → Privacy &amp; Security → Accessibility</b>, turn on ${esc(S.permission_app || "your terminal app")}, then quit and reopen it.</div>`;
+  if (!S.keys_ok) out += `<div class="banner warn row between wrap"><span>Key output is blocked. Open <b>System Settings → Privacy &amp; Security → Accessibility</b>, turn on ${esc(S.permission_app || "your terminal app")}, then quit and reopen it.</span>${S.demo ? "" : `<button class="small" data-act="open-settings" data-pane="accessibility">Open Accessibility settings</button>`}</div>`;
   return out;
 }
 
 const ICONS = {
   library: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>`,
   capture: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`,
+  camera: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3z"/></svg>`,
   hud: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>`,
   engine: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>`,
   metrics: `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
@@ -115,6 +134,7 @@ function sidebar() {
     <label class="field">Profile<select data-change="profile" aria-label="Profile">${options || `<option>${esc(p.name)}</option>`}</select></label>
     <div class="nav">
       ${nav("library", "Library", "#/library")}
+      ${nav("camera", "Camera", "#/camera")}
       <a href="#" data-act="capture" class="">${ICONS.capture}Capture</a>
       ${nav("hud", "Live HUD", "#/hud")}
       ${nav("engine", "Engine", "#/engine")}
@@ -379,7 +399,7 @@ function libraryPage() {
   const shown = S.gestures.filter((g) => (ui.filter === "all" || category(g) === ui.filter) && (!q || `${g.name} ${g.casts}`.toLowerCase().includes(q)));
   const filterBtn = (id, label, dot) => `<button class="${ui.filter === id ? "on" : ""}" data-act="filter" data-v="${id}" aria-pressed="${ui.filter === id}">${dot ? `<i class="dot ${dot}"></i>` : ""}${label} <span>${cats[id]}</span></button>`;
   const tiles = shown.map(tileHtml).join("");
-  const empty = !S.gestures.length ? `<div class="empty"><b>No gestures yet.</b><span>Tap the weapon shafts together (or press Capture) and do a move five times. Then press the key you bound in WoW. That's it.</span><span class="muted">Record Neutral first on the Engine page so poses know what "doing nothing" looks like.</span><div class="row wrap"><button class="primary" data-act="capture">Capture your first move</button>${S.demo ? "" : `<button data-act="open-demo">Try it with sample data</button>`}</div></div>` : "";
+  const empty = !S.gestures.length ? `<div class="empty"><b>No gestures yet.</b><span>Tap the weapon shafts together (or press Capture) and do a move five times. Then press the key you bound in WoW. That's it.</span><span class="muted">Record Neutral first on the Engine page so poses know what "doing nothing" looks like.</span><div class="row wrap"><button class="primary" data-act="capture">Capture your first move</button><a class="btn" href="#/camera">${ICONS.camera}See yourself on camera</a>${S.demo ? "" : `<button data-act="open-demo">Try it with sample data</button>`}</div></div>` : "";
   return `
   <div class="toolbar"><div class="chips grow" id="chips">${chipsHtml()}</div>
     <button class="primary capture-btn" data-act="capture">${ICONS.capture}Capture a move<small>or tap the shafts · ⌥C</small></button></div>
@@ -636,6 +656,86 @@ function checksHtml() {
   return items.map(([n, ok]) => `<span class="${ok ? "ok" : ""}">${n} ${ok ? "✓" : "–"}</span>`).join("");
 }
 
+// ------------------------------------------------------------------ camera (live view)
+
+// The webcam, live and big, with the skeleton the tracker sees: get in frame here, then capture.
+// The video element is kept and re-attached across redraws (never rebuilt), so it doesn't flicker.
+let camStageEl = null;
+function camStage() {
+  if (!camStageEl) {
+    camStageEl = document.createElement("div");
+    camStageEl.className = "stage cam-stage";
+    camStageEl.innerHTML = `<div class="mirror"><img class="preview-img" alt="You, live from the webcam"><canvas class="skel-canvas cam-canvas"></canvas></div><div class="cam-over" id="cam-over" aria-live="polite"></div>`;
+  }
+  return camStageEl;
+}
+
+function cameraPage() {
+  return `
+  <div class="toolbar"><div class="chips grow" id="chips">${chipsHtml()}</div>
+    <button class="primary capture-btn" data-act="capture">${ICONS.capture}Capture a move<small>3-2-1, then do it · ⌥C</small></button></div>
+  <div class="head"><div class="lead"><h1>Camera</h1><p class="soft">You, live, with the skeleton the tracker sees. Get in frame here, then capture.</p></div>
+    <div class="toolbar"><label class="inline muted"><input type="checkbox" data-change="ui-flag" data-k="camSkeleton" ${ui.camSkeleton ? "checked" : ""}> Skeleton</label>
+      <label class="inline muted"><input type="checkbox" data-change="ui-flag" data-k="camVideo" ${ui.camVideo ? "checked" : ""}> Video</label></div></div>
+  <div class="cam-layout"><div id="cam-slot" class="cam-slot"></div><aside id="cam-side">${camSide()}</aside></div>`;
+}
+
+// What the tracker can see of you, and the one thing to fix first.
+function framing() {
+  const lm = live.pose?.lm;
+  if (!S.camera.ok) return { state: "off", hint: S.camera.message || "Webcam off", parts: [] };
+  if (!lm) return { state: "lost", hint: "Looking for you… step into view, whole body if you can.", parts: [] };
+  const vis = (i) => lm[i][2] > 0.5 && lm[i][0] >= 0 && lm[i][0] <= 1 && lm[i][1] >= 0 && lm[i][1] <= 1;
+  const all = (...ix) => ix.every(vis);
+  const parts = [["Head", all(0)], ["Shoulders", all(11, 12)], ["Hands", all(15, 16)], ["Hips", all(23, 24)], ["Knees", all(25, 26)], ["Feet", all(27, 28)]];
+  const sw = Math.hypot(lm[11][0] - lm[12][0], lm[11][1] - lm[12][1]);     // shoulder width, share of the picture
+  const cx = 1 - (lm[11][0] + lm[12][0] + lm[23][0] + lm[24][0]) / 4;      // where you are on the (mirrored) screen
+  let hint = "";
+  if (!all(11, 12)) hint = "Face the camera so it sees both shoulders.";
+  else if (sw > 0.3) hint = "Step back a little: you're very close.";
+  else if (!all(23, 24)) hint = "Step back so your hips are in view.";
+  else if (!all(15, 16)) hint = "Keep both hands in view.";
+  else if (cx < 0.3) hint = "Move a little to your right.";
+  else if (cx > 0.7) hint = "Move a little to your left.";
+  else if (!all(27, 28)) hint = "Step back so your feet are in view: kicks, stomps and jogging need them.";
+  else if (sw < 0.06) hint = "Come a bit closer.";
+  return { state: hint ? "partial" : "good", hint: hint || "You're in frame. Ready to capture.", parts };
+}
+
+function camOverlay() {
+  const f = framing();
+  const dot = { good: "ok", partial: "warn", lost: "warn", off: "bad" }[f.state];
+  const label = { good: "Tracking you", partial: "Tracking you", lost: "Looking for you", off: "Camera off" }[f.state];
+  return `<div class="cam-top"><span class="cam-pill"><i class="dot ${dot}"></i>${label}</span>${S.camera.ok ? `<span class="cam-pill">${S.camera.fps} fps</span>` : ""}</div>
+    ${f.state === "off" ? `<div class="cam-off"><b>${esc(f.hint)}</b>${S.demo ? "" : `<button data-act="open-settings" data-pane="camera">Open Camera settings</button>`}</div>` : ""}
+    <div class="cam-bottom">${f.parts.length ? `<div class="cam-parts">${f.parts.map(([n, ok]) => `<span class="${ok ? "ok" : ""}">${n} ${ok ? "✓" : "–"}</span>`).join("")}</div>` : ""}
+      ${f.state !== "off" ? `<span class="cam-hint ${f.state}">${esc(f.hint)}</span>` : ""}</div>`;
+}
+
+function camPose() {
+  if (!S.gestures.some((g) => g.kind === "pose")) return `<span class="muted" style="font-size:12px">No poses captured yet.</span>`;
+  const top = Object.entries(live.pose?.matches || {}).sort((a, b) => b[1] - a[1])[0];
+  const g = top && S.gestures.find((x) => x.id === top[0]);
+  if (!g) return `<span class="muted" style="font-size:12px">Nothing close.</span>`;
+  const pct = Math.round(top[1] * 100);
+  return `<div class="row" style="gap:8px"><span style="flex:0 0 auto;font-size:13px">${esc(g.name)}</span><div class="meter webcam"><i style="width:${pct}%"></i></div><span style="font-size:12px;width:36px;text-align:right">${pct}%</span></div>`;
+}
+
+function camSide() {
+  const recent = S.activity.slice(-6).reverse();
+  const weapons = S.devices.length
+    ? `<div class="stack" style="gap:8px"><span class="muted" style="font-size:12px">Weapons · a move starts at the yellow line</span>${S.devices.map((d) => `<div class="row" style="gap:8px"><span style="width:52px;font-size:12px">${esc(cap(d.role || d.name))}</span><div class="meter ${d.role || ""}" id="meter-${cssId(d.name)}"><i></i><b style="left:${Math.min(100, (d.trigger / 12) * 100)}%"></b></div></div>`).join("")}</div>`
+    : `<span class="muted" style="font-size:12px">No Joy-Cons connected: poses and body moves still work.</span>`;
+  const log = recent.length ? `<ol class="log">${recent.map((a) => `<li><span class="t">${fmtTime(a.t)}</span><span class="${a.sent ? "sent" : a.outcome.startsWith("near") ? "near" : a.outcome.startsWith("held") ? "held" : ""}">${esc(a.gesture || "")}</span><span>${esc(a.outcome)}${a.sent && a.key ? ` ${esc(a.key)}` : ""}</span></li>`).join("")}</ol>`
+    : `<span class="muted" style="font-size:12px">Nothing yet. Do a move you've captured.</span>`;
+  return `<section class="panel stack" style="gap:16px"><h2>Right now</h2>
+    <div class="stack" style="gap:6px"><span class="muted" style="font-size:12px">Closest pose</span><div id="cam-pose">${camPose()}</div></div>
+    ${weapons}
+    <div class="stack" style="gap:6px"><span class="muted" style="font-size:12px">Recognized</span>${log}</div>
+    <div class="note ${S.armed ? "warn" : "info"}" style="font-size:12px">${S.armed ? "Armed: what it recognizes presses keys (while WoW is in front)." : "Disarmed: it recognizes moves but presses nothing, so move freely."}</div>
+    <button class="primary" data-act="capture">${ICONS.capture}Capture a move</button></section>`;
+}
+
 // ------------------------------------------------------------------ HUD / overlay
 
 function hudPage() {
@@ -836,6 +936,8 @@ function showPreview(blob) {
 function onPose(m) {
   live.pose = m;
   drawSkeleton();
+  const over = $("#cam-over"); if (over && over.isConnected) setHTML(over, camOverlay());
+  const cp = $("#cam-pose"); if (cp) setHTML(cp, camPose());
   const checks = $("#checks"); if (checks) checks.innerHTML = checksHtml();
   const top = Math.max(0, ...Object.values(m.matches || {}));
   const el = $("#meter-webcam i"); if (el) el.style.width = `${Math.round(top * 100)}%`;
@@ -851,7 +953,7 @@ function drawSkeleton() {
 }
 
 function drawSkeletonOn(canvas, img) {
-  const m = live.pose;
+  const m = ui.camSkeleton || !canvas?.classList.contains("cam-canvas") ? live.pose : null;
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1, cw = canvas.clientWidth, ch = canvas.clientHeight;
   if (canvas.width !== cw * dpr) { canvas.width = cw * dpr; canvas.height = ch * dpr; }
@@ -959,6 +1061,7 @@ const actions = {
   compact: () => { ui.compact = !ui.compact; send({ op: "overlay_size", height: ui.compact ? 76 : null }); render(true); },
   wrong: () => send({ op: "report_wrong", ignore: true }),
   "neutral-cancel": () => send({ op: "neutral_cancel" }),
+  "open-settings": (el) => send({ op: "open_settings", pane: el.dataset.pane }),
   "open-demo": () => { send({ op: "open_demo" }); flash("Opening the demo in a new window…"); },
   "overlay-hide": () => send({ op: "overlay_hide" }),
   "toast-close": () => { ui.toastUntil = 0; render(true); },
@@ -998,6 +1101,7 @@ const changes = {
   profile: (el) => send({ op: "profile_switch", path: el.value }),
   "profile-rename": (el) => send({ op: "profile_rename", name: el.value.trim() }),
   search: (el) => { ui.search = el.value; },
+  "ui-flag": (el) => { ui[el.dataset.k] = el.checked; render(true); drawSkeleton(); },
   setting: (el) => send({ op: "settings", fields: { [el.dataset.k]: el.value } }),
   "setting-bool": (el) => send({ op: "settings", fields: { [el.dataset.k]: el.checked } }),
   "setting-num": (el) => send({ op: "settings", fields: { [el.dataset.k]: +el.value } }),

@@ -10,6 +10,7 @@ from aiohttp import WSMsgType, web
 from .photos import NAME
 
 DROPPABLE = {"pose", "motion"}
+DEFAULT_PREVIEW_WIDTH = 480
 MAX_BACKLOG = 30
 
 
@@ -30,6 +31,7 @@ class Server:
         self.port = port
         self.loop = None
         self.clients = set()
+        self.previews = {}          # client -> (wants video, width): each window asks for itself
         self._ready = threading.Event()
         self._error = None
 
@@ -121,7 +123,8 @@ class Server:
         q = asyncio.Queue()
         self.clients.add(q)
         sender = asyncio.ensure_future(self._sender(ws, q))
-        self.engine.preview_wanted = True
+        self.previews[q] = (True, DEFAULT_PREVIEW_WIDTH)
+        self._apply_previews()
         q.put_nowait(self.engine.snapshot())
         try:
             async for msg in ws:
@@ -131,15 +134,30 @@ class Server:
                     op = json.loads(msg.data)
                 except ValueError:
                     continue
+                if op.get("op") == "preview":
+                    # Video for this window only: the hidden HUD panel saying "no video" mustn't
+                    # turn it off in the main window.
+                    width = int(op.get("width") or DEFAULT_PREVIEW_WIDTH)
+                    self.previews[q] = (bool(op.get("on")), max(320, min(1280, width)))
+                    self._apply_previews()
+                    continue
                 reply = await self.loop.run_in_executor(None, self.engine.handle, op)
                 if reply:
                     q.put_nowait(reply)
         finally:
             self.clients.discard(q)
+            self.previews.pop(q, None)
+            self._apply_previews()
             sender.cancel()
-            if not self.clients:
-                self.engine.preview_wanted = False
         return ws
+
+    def _apply_previews(self):
+        """Send video if any window wants it, as big as the biggest one wants (a big live view
+        gets smooth video; the small preview on the Engine page doesn't need it)."""
+        wanted = [w for on, w in self.previews.values() if on]
+        self.engine.preview_wanted = bool(wanted)
+        self.engine.preview_width = max(wanted) if wanted else DEFAULT_PREVIEW_WIDTH
+        self.engine.preview_fps = 30 if self.engine.preview_width > DEFAULT_PREVIEW_WIDTH else 15
 
     async def _sender(self, ws, q):
         try:
@@ -159,8 +177,11 @@ class Server:
             self.loop.call_soon_threadsafe(self._fanout, msg)
 
     def _fanout(self, msg):
-        droppable = isinstance(msg, (bytes, bytearray)) or msg.get("type") in DROPPABLE
+        video = isinstance(msg, (bytes, bytearray))
+        droppable = video or msg.get("type") in DROPPABLE
         for q in self.clients:
+            if video and not self.previews.get(q, (True, 0))[0]:
+                continue                    # this window doesn't show video
             if droppable and q.qsize() > MAX_BACKLOG:
                 continue
             q.put_nowait(msg)

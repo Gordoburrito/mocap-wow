@@ -65,6 +65,9 @@ whether key output is allowed.
 
 ## Capturing a move
 
+0. Open **Camera** in the sidebar: you, live, with your skeleton on top. It says what it can see
+   of you (head, hands, hips, knees, feet) and the one thing to fix ("step back so your feet are
+   in view"), plus what it recognizes right now. Get in frame, then press **Capture a move**.
 1. **Tap the weapon shafts together** (not the tips), press **⌥C**, or click **Capture**. You see
    yourself on the webcam with your skeleton drawn on top.
 2. **Each take: 3, 2, 1, GO**, then 2.5 s of recording (red border, REC timer): do the move once.

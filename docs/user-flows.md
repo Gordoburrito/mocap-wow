@@ -22,6 +22,7 @@ flowchart LR
         Menu -->|Open the demo| Demo["Demo window<br/>sample data, simulated hardware"]
     end
     subgraph Window["App window: sidebar on every page"]
+        Library <--> Camera["Camera: live view"]
         Library <--> Engine
         Library <--> Metrics
         Library <--> HUD["Live HUD"]
@@ -34,6 +35,7 @@ Pop-ups open on top of a page and always close back to it:
 ```mermaid
 flowchart LR
     Library -->|Capture a move · sidebar Capture · ⌥C · tap the shafts| Capture
+    Camera -->|Capture a move| Capture
     Gesture["Gesture page"] -->|Add takes · Re-record all| Capture
     Engine -->|Calibrate| Calibrate
     Engine -->|Record 6 s| Neutral["Neutral recording"]
@@ -51,6 +53,7 @@ flowchart LR
 | App window | Open Mocap; ⚔ → Show Mocap; click the Dock icon | Close the window (keeps running in the menu bar); ⌘Q; ⚔ → Quit |
 | Library | Sidebar; "← Back to the app" from the HUD; breadcrumb on a gesture page | Sidebar; a tile; Capture |
 | Gesture page | A tile in the Library | "Library" breadcrumb; sidebar |
+| Camera (live view: you, big, with your skeleton; what's in frame; what it recognizes) | Sidebar; "See yourself on camera" (empty Library) | Sidebar; Capture a move (and back here after) |
 | Engine | Sidebar | Sidebar |
 | Metrics | Sidebar; ⚔ → Accuracy test… | Sidebar |
 | Live HUD (in the window) | Sidebar | "← Back to the app"; Escape; sidebar is not shown here |
@@ -94,6 +97,7 @@ typical take on hover and its page shows every take.
 
 ```mermaid
 flowchart LR
+    L([Camera page: get in frame]) --> S
     S([Capture: button · ⌥C · tap shafts]) --> C3[3 · 2 · 1, beeps]
     C3 --> R[GO: record 2.5 s<br/>red border, REC timer]
     R --> J{Caught a move?}
@@ -187,7 +191,8 @@ flowchart LR
 `lab/ui_flows_check.py` drives the real UI in Chrome against the app with simulated hardware
 (and against the demo, with its 18 sample gestures), pressing and releasing the mouse and keys
 like a person, and checks the engine's state after each step: every page from the sidebar and
-back; every gesture's tile to its page and back; the Library filters; changing "Judged on" and
+back; the Camera page's live video and back out of a capture started there; every gesture's tile
+to its page and back; the Library filters; changing "Judged on" and
 back; capture opened three ways and left by Cancel, Escape, It's a pose, It's a body move; a body
 move captured through the key step, Redo, Escape, then saved with a real key press; the key
 step's Cancel; the HUD's ✕; a gesture's key chip and Escape; Delete backing off by itself;

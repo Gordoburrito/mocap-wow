@@ -200,6 +200,25 @@ async def flows(b, report):
                    f"{page} heading missing")
     await check("Sidebar: Library, Engine, Metrics", pages)
 
+    async def camera():
+        await b.click('.side .nav a[href="#/camera"]')
+        expect(await b.js("location.hash") == "#/camera", "Camera didn't open")
+        await asyncio.sleep(1.5)
+        if state()["camera"]["ok"]:
+            expect(await b.js("document.querySelector('.cam-stage img.preview-img')?.classList.contains('live')"),
+                   "no live video on the Camera page")
+            expect(await b.js("document.querySelector('.cam-stage img.preview-img').naturalWidth") >= 900,
+                   "the Camera page's video isn't the big one")
+            expect(await b.exists("#cam-over .cam-pill"), "no tracking status over the video")
+        # Into capture from here, and back out to the same live view.
+        await b.click('[data-act=capture].capture-btn')
+        expect(state()["capture"] is not None, "Capture didn't start from the Camera page")
+        await b.escape()
+        expect(state()["capture"] is None and await b.js("location.hash") == "#/camera", "Escape didn't come back")
+        expect(await b.exists("#cam-slot .cam-stage"), "the live view is gone after capture")
+        await b.click('.side .nav a[href="#/library"]')
+    await check("Camera: live video + skeleton → Capture → Escape back → Library", camera)
+
     async def hud():
         await b.click('.side .nav a[href="#/hud"]')
         expect(await b.js("location.hash") == "#/hud", "HUD didn't open")

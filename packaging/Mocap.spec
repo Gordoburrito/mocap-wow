@@ -35,7 +35,8 @@ app = BUNDLE(
         "LSApplicationCategoryType": "public.app-category.games",
         "NSHighResolutionCapable": True,
         "NSCameraUsageDescription": "Mocap watches your poses and where your weapon hands are. "
-                                    "Video is processed on your Mac and never saved or sent anywhere.",
+                                    "Video is processed on your Mac and never sent anywhere; only photos of the takes "
+                                    "you capture are kept, in Mocap's data folder.",
         "NSBluetoothAlwaysUsageDescription": "Mocap reads the Joy-Cons strapped to your weapons.",
         "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True},
         "NSHumanReadableCopyright": "Open source, MIT licence.",

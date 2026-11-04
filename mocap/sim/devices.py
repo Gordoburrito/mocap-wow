@@ -211,16 +211,18 @@ class SimCamera(threading.Thread):
                 lm = np.array(frames[self.rng.integers(len(frames))], dtype=float) if frames else None
             if lm is not None:
                 self.engine.on_pose(lm, self.aspect, now)
-                preview = getattr(self.engine, "preview_wanted", False)
-                photos = getattr(self.engine, "photos_wanted", False)
-                if (preview or photos) and now - getattr(self, "_last_preview", 0) >= 1 / 15:
+                eng = self.engine
+                fps = getattr(eng, "preview_fps", 15)
+                if getattr(eng, "preview_wanted", False) and now - getattr(self, "_last_preview", 0) >= 1 / fps:
                     self._last_preview = now
-                    jpeg = self._render(lm)
+                    jpeg = self._render(lm, getattr(eng, "preview_width", 480))
                     if jpeg is not None:
-                        if preview:
-                            self.engine.emit_binary(jpeg)
-                        if photos:
-                            self.engine.on_photo(now, jpeg)
+                        eng.emit_binary(jpeg)
+                if getattr(eng, "photos_wanted", False) and now - getattr(self, "_last_photo", 0) >= 1 / 15:
+                    self._last_photo = now
+                    jpeg = self._render(lm, 640)
+                    if jpeg is not None:
+                        eng.on_photo(now, jpeg)
             time.sleep(1 / 30)
 
     def _render(self, lm, width=480):
@@ -237,7 +239,7 @@ class SimCamera(threading.Thread):
         torso = np.array([P(11), P(12), P(24), P(23)], np.int32)
         cv2.fillPoly(img, [torso], (92, 84, 78))
         for a, b in body:
-            cv2.line(img, P(a), P(b), (92, 84, 78), 26, cv2.LINE_AA)
-        cv2.circle(img, P(0), 26, (110, 100, 94), -1, cv2.LINE_AA)
+            cv2.line(img, P(a), P(b), (92, 84, 78), max(2, round(26 * width / 480)), cv2.LINE_AA)
+        cv2.circle(img, P(0), round(26 * width / 480), (110, 100, 94), -1, cv2.LINE_AA)
         ok, jpeg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 70])
         return jpeg.tobytes() if ok else None

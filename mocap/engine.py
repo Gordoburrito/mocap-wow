@@ -16,10 +16,12 @@ one key press (or one held key) per recognized gesture.
 
 import queue
 import re
-from pathlib import Path
+import subprocess
+import sys
 import threading
 import time
 from collections import deque
+from pathlib import Path
 
 import numpy as np
 
@@ -115,6 +117,8 @@ class Engine:
         self.binary_listeners = []
         self.rumble_q = queue.Queue()
         self.preview_wanted = False
+        self.preview_width = 480                # set by the server from what the open windows want
+        self.preview_fps = 15
         self.camera = {"ok": False, "fps": 0.0, "message": "Starting camera…"}
         self.hotkeys = {"ok": False, "message": "Global hotkeys off"}
         self.activity = deque(maxlen=200)
@@ -126,6 +130,7 @@ class Engine:
         self.overlay_hide_requested = False     # the HUD panel's own "hide" button (the app acts on it)
         self.demo = False                       # running the demo (sample data, simulated hardware)
         self.on_open_demo = None                # how to open the demo window (set at start-up)
+        self.open_url = _open_url               # System Settings panes (camera, accessibility)
         self.track = CameraTrack()
         self.move_seg = camera_moves.MoveSegmenter()    # whole body: capture
         self.move_scopes = {}                           # scope -> MoveScope (live recognition)
@@ -1646,6 +1651,11 @@ class Engine:
             elif name == "preview":
                 self.preview_wanted = bool(op.get("on"))
                 return None
+            elif name == "open_settings":
+                url = SETTINGS_PANES.get(op.get("pane"))
+                if url and not self.demo:
+                    self.open_url(url)
+                return None
             elif name == "overlay_size":
                 self.overlay_height = op.get("height")
                 return None
@@ -1752,6 +1762,17 @@ class MoveScope:
         self.clf = camera_moves.MoveClassifier(points=pts, grounded=grounded)
         self.joiner = camera_moves.MoveJoiner()
         self.block = (-np.inf, set(), "")
+
+
+SETTINGS_PANES = {
+    "camera": "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera",
+    "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+}
+
+
+def _open_url(url):
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _peak_host(dev, segment):
